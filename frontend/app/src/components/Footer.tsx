@@ -25,7 +25,7 @@ const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/reservar" className="text-gray-300 hover:text-white transition">
+                <Link to="/reservation" className="text-gray-300 hover:text-white transition">
                   Reservar
                 </Link>
               </li>

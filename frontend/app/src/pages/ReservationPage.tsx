@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import CourtCard from '../components/CourtCard';
 import ReservationCalendar from '../components/ReservationCalendar';
-
-interface TimeSlot {
-    time: string;
-    available: boolean;
-}
+import { reservationService, TimeSlot } from '../service/reservationService';
+import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+import { CreateReservationDto} from '../service/reservationService.ts';
 
 interface Court {
-    id: string;
+    id: number; // Cambiado de string a number
     name: string;
     description: string;
     price: number;
@@ -31,14 +30,18 @@ const ReservationPage: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedTime, setSelectedTime] = useState<string | null>(null);
     const [selectedDuration, setSelectedDuration] = useState<number>(90);
-    const [selectedCourt, setSelectedCourt] = useState<string | null>(null);
+    const [selectedCourt, setSelectedCourt] = useState<number | null>(null);
     const [needsEquipment, setNeedsEquipment] = useState<boolean>(false);
     const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
+    const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const { user } = useAuth(); // Asumiendo que tienes un hook de autenticación
+    const [selectedTimeSlot] = useState<TimeSlot | null>(null);
 
     // Sample courts data
     const courts: Court[] = [
         {
-            id: 'court1',
+            id: 1, // Cambiado de 'court1' a 1
             name: 'Cancha 1',
             description: 'Cancha de padel profesional con paredes de cristal templado y césped artificial de alta calidad.',
             price: 10.000,
@@ -46,7 +49,7 @@ const ReservationPage: React.FC = () => {
             available: true
         },
         {
-            id: 'court2',
+            id: 2, // Cambiado de 'court2' a 2
             name: 'Cancha 2',
             description: 'Cancha techada ideal para jugar en cualquier condición climática con iluminación profesional.',
             price: 15.000,
@@ -54,7 +57,7 @@ const ReservationPage: React.FC = () => {
             available: true
         },
         {
-            id: 'court3',
+            id: 3, // Cambiado de 'court3' a 3
             name: 'Cancha 3',
             description: 'Cancha panorámica con vistas al campus y equipada con gradas para espectadores.',
             price: 12.000,
@@ -107,7 +110,8 @@ const ReservationPage: React.FC = () => {
         setSelectedCourt(null);
     };
 
-    const handleCourtSelect = (courtId: string) => {
+    // Y ajusta la función handleCourtSelect
+    const handleCourtSelect = (courtId: number) => {
         setSelectedCourt(courtId);
     };
 
@@ -139,14 +143,94 @@ const ReservationPage: React.FC = () => {
         return Math.round(total);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const equipmentList = selectedEquipment.map(eqId =>
-            equipment.find(eq => eq.id === eqId)?.name
-        ).join(', ');
+    useEffect(() => {
+        const loadTimeSlots = async () => {
+            if (!selectedCourt) return;
 
-        alert(
-            `Reserva enviada:\nCancha: ${selectedCourt}\nFecha: ${selectedDate.toLocaleDateString()}\nHora: ${selectedTime}\nDuración: ${selectedDuration} minutos\nEquipamiento: ${equipmentList || 'Ninguno'}\nTotal: $${calculateTotal()} CLP`
+            try {
+                setIsLoading(true);
+                const courtId = parseInt(selectedCourt.toString()); // Convertir string a number
+                const formattedDate = selectedDate.toISOString().split('T')[0];
+                const slots = await reservationService.getAvailableTimeSlots(courtId, formattedDate);
+                setAvailableTimeSlots(slots);
+            } catch (error) {
+                toast.error('Error al cargar los horarios disponibles');
+                console.error(error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadTimeSlots();
+    }, [selectedDate, selectedCourt]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!selectedTimeSlot || !selectedCourt || !user?.id) {
+            toast.error('Por favor, complete todos los campos requeridos');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+
+            const reservationData: CreateReservationDto = {
+                courtId: selectedCourt.toString(),
+                userId: user.id,
+                startTime: selectedTimeSlot.startTime.toISOString(),
+                endTime: selectedTimeSlot.endTime.toISOString()
+            };
+
+            const reservation = await reservationService.createReservation(reservationData);
+            
+            toast.success('¡Reserva creada exitosamente!');
+
+            // Crear la fecha de inicio
+            // Resetear el formulario
+            setSelectedCourt(null);
+            setSelectedTime(null);
+            setSelectedEquipment([]);
+            setNeedsEquipment(false);
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            toast.error(`Error al crear la reserva: ${errorMessage}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Modificar el componente de selección de hora para usar los timeSlots disponibles
+    const renderTimeSlots = () => {
+        if (!availableTimeSlots.length) {
+            return <p className="text-gray-500">No hay horarios disponibles para esta fecha</p>;
+        }
+
+        return (
+            <div className="grid grid-cols-4 gap-2">
+                {availableTimeSlots.map((slot, index) => {
+                    const startTime = new Date(slot.startTime);
+                    const timeString = startTime.toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    return (
+                        <button
+                            key={index}
+                            onClick={() => setSelectedTime(timeString)}
+                            className={`p-2 rounded ${
+                                selectedTime === timeString
+                                    ? 'bg-[#071d40] text-white'
+                                    : 'bg-gray-100 hover:bg-gray-200'
+                            }`}
+                        >
+                            {timeString}
+                        </button>
+                    );
+                })}
+            </div>
         );
     };
 
@@ -165,12 +249,22 @@ const ReservationPage: React.FC = () => {
                     {/* Step 1: Select Date and Time */}
                     <div className="mb-8">
                         <h2 className="text-xl font-semibold text-[#071d40] mb-4">1. Selecciona fecha y hora</h2>
-                        <ReservationCalendar
-                            selectedDate={selectedDate}
-                            onDateChange={setSelectedDate}
-                            timeSlots={timeSlots}
-                            onTimeSelect={handleTimeSelect}
-                        />
+                        <div className="mb-4">
+                            <ReservationCalendar
+                                selectedDate={selectedDate}
+                                onDateChange={setSelectedDate}
+                            />
+                        </div>
+                        {selectedCourt && (
+                            <div className="mt-4">
+                                <h3 className="text-lg font-medium mb-2">Horarios disponibles:</h3>
+                                {isLoading ? (
+                                    <p>Cargando horarios disponibles...</p>
+                                ) : (
+                                    renderTimeSlots()
+                                )}
+                            </div>
+                        )}
                     </div>
                     {/* Step 2: Select Court - Only shown after date and time selection */}
                     {selectedTime && (
@@ -309,9 +403,14 @@ const ReservationPage: React.FC = () => {
 
                             <button
                                 onClick={handleSubmit}
-                                className="w-full bg-[#071d40] text-white py-3 rounded-md hover:bg-[#122e5e] transition duration-300"
+                                disabled={isLoading || !selectedTime || !selectedCourt}
+                                className={`w-full ${
+                                    isLoading || !selectedTime || !selectedCourt
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-[#071d40] hover:bg-[#122e5e]'
+                                } text-white py-3 rounded-md transition duration-300`}
                             >
-                                Confirmar Reserva
+                                {isLoading ? 'Procesando...' : 'Confirmar Reserva'}
                             </button>
                         </div>
                     )}

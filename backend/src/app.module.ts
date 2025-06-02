@@ -1,11 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config'; // ✅ importar
+import { ConfigModule } from '@nestjs/config'; 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { CourtsModule } from './courts/courts.module';
+import { ReservationsModule } from './reservations/reservations.module';
+import { ProductsModule } from "./products/products.module";
+import { DashboardModule } from './dashboard/dashboard.module';
 
-@Module({
-  imports: [
+
+@Module({  imports: [
     ConfigModule.forRoot({ isGlobal: true }), // ✅ cargar .env automáticamente
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -19,6 +23,10 @@ import { AuthModule } from './auth/auth.module';
     }),
     UsersModule,
     AuthModule,
+    CourtsModule,
+    ProductsModule,
+    ReservationsModule,
+    DashboardModule,
   ],
   controllers: [],
   providers: [],

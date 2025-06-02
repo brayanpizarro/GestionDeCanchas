@@ -14,15 +14,21 @@ import {
   export class User {
     @PrimaryGeneratedColumn()
     id: number;
-  
     @Column()
     name: string;
-  
-    @Column()
+
+    @Column({ unique: true })
     email: string;
   
     @Column()
     password: string;
+
+    @Column({
+      type: 'enum',
+      enum: ['active', 'inactive'],
+      default: 'active'
+    })
+    status: 'active' | 'inactive';
 
     @Column({
       type: 'enum',

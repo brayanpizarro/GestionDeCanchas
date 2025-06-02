@@ -15,7 +15,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    command: pnpm run start:dev  # usa start:dev si tienes hot reload configurado
+    command: npm run start:dev  # usa start:dev si tienes hot reload configurado
 
   postgres:
     image: postgres:15

@@ -25,7 +25,7 @@ const Hero: React.FC = () => {
           que quieras y al mejor precio.
         </p>
         
-        <Link to="/reservar" className="flex items-center space-x-2 bg-white hover:bg-gray-100 text-[#0A1838] px-6 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1">
+        <Link to="/reservation" className="flex items-center space-x-2 bg-white hover:bg-gray-100 text-[#0A1838] px-6 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1">
           <Calendar size={20} />
           <span>Reserva tu cancha aquí</span>
         </Link>
