@@ -1,34 +1,27 @@
-import { FC, ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { FC, ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 interface AdminGuardProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 const AdminGuard: FC<AdminGuardProps> = ({ children }) => {
-    const { user, isAuthenticated, loading } = useAuth();
-    const navigate = useNavigate();
+  const { user, isAuthenticated, loading } = useAuth();
 
-    useEffect(() => {
-        if (!loading) {
-            if (!isAuthenticated) {
-                navigate('/auth');
-            } else if (user?.role !== 'admin') {
-                navigate('/');
-            }
-        }
-    }, [isAuthenticated, user, loading, navigate]);
+  if (loading) {
+    return <div>Cargando...</div>; // Puedes mejorar el diseño si quieres
+  }
 
-    if (loading) {
-        return <div>Loading...</div>;
-    }
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
 
-    if (!isAuthenticated || user?.role !== 'admin') {
-        return null;
-    }
+  if (user?.role !== 'admin') {
+    return <Navigate to="/profile" replace />;
+  }
 
-    return <>{children}</>;
+  return <>{children}</>;
 };
 
 export default AdminGuard;

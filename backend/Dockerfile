@@ -18,7 +18,7 @@ COPY . .
 RUN npm run build
 
 # Exponer el puerto del backend
-EXPOSE 3000
+EXPOSE 3001
 
 # Comando para iniciar la app (modo desarrollo)
 CMD ["npm", "run", "start:dev"]

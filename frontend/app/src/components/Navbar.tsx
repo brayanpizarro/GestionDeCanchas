@@ -35,7 +35,11 @@ const Navbar: React.FC = () => {
   };
 
   const navigateToDashboard = () => {
-    navigate('/profile'); 
+    if(user?.role === 'admin') {
+      navigate('/admin'); // Navegar al panel de administración si es admin
+    } else if(user?.role === 'user') {
+      navigate('/profile'); // Navegar al panel de usuario si es usuario 
+    }
     setIsOpen(false);
     setIsUserMenuOpen(false);
   };
