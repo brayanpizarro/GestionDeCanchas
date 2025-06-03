@@ -6,15 +6,23 @@ import ReservationCalendar from '../components/ReservationCalendar';
 import { reservationService, TimeSlot } from '../service/reservationService';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { CreateReservationDto} from '../service/reservationService.ts';
+import { CreateReservationDto } from '../service/reservationService.ts';
 
 interface Court {
-    id: number; // Cambiado de string a number
+    id: number;
     name: string;
     description: string;
     price: number;
     imageUrl: string;
     available: boolean;
+    maxPlayers: number;
+}
+
+interface Player {
+    firstName: string;
+    lastName: string;
+    rut: string;
+    age: number;
 }
 
 interface Equipment {
@@ -35,82 +43,70 @@ const ReservationPage: React.FC = () => {
     const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
     const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const { user } = useAuth(); // Asumiendo que tienes un hook de autenticación
-    const [selectedTimeSlot] = useState<TimeSlot | null>(null);
-
-    // Sample courts data
-    const courts: Court[] = [
-        {
-            id: 1, // Cambiado de 'court1' a 1
-            name: 'Cancha 1',
-            description: 'Cancha de padel profesional con paredes de cristal templado y césped artificial de alta calidad.',
-            price: 10.000,
-            imageUrl: 'assets/imagenes/cancha.webp',
-            available: true
-        },
-        {
-            id: 2, // Cambiado de 'court2' a 2
-            name: 'Cancha 2',
-            description: 'Cancha techada ideal para jugar en cualquier condición climática con iluminación profesional.',
-            price: 15.000,
-            imageUrl: 'assets/imagenes/canchadepadelCerrado.png',
-            available: true
-        },
-        {
-            id: 3, // Cambiado de 'court3' a 3
-            name: 'Cancha 3',
-            description: 'Cancha panorámica con vistas al campus y equipada con gradas para espectadores.',
-            price: 12.000,
-            imageUrl: 'assets/imagenes/canchacongradas.webp ',
-            available: true
-        }
-    ];
-
-    // Sample equipment data
-    const equipment: Equipment[] = [
-        {
-            id: 'eq1',
-            name: 'Raqueta Profesional',
-            description: 'Raqueta de padel profesional, peso medio',
-            price: 5.000,
-            available: true,
-            imageUrl: 'assets/imagenes/raquetaspadel.png'
-        },
-        {
-            id: 'eq2',
-            name: 'Set de Pelotas',
-            description: 'Set de 3 pelotas de padel nuevas',
-            price: 3.000,
-            available: true,
-            imageUrl: ''
-        },
-        {
-            id: 'eq3',
-            name: 'Malla de Padel',
-            description: 'Malla profesional para padel',
-            price: 2.500,
-            available: true,
-            imageUrl: ' '
-        }
-    ];
-
-
-    const timeSlots: TimeSlot[] = Array.from({ length: 21 }, (_, i) => {
-        const hour = Math.floor(i / 2) + 8;
-        const minute = (i % 2) * 30;
-        return {
-            time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
-            available: true
-        };
+    const { user } = useAuth();
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null);
+    const [players, setPlayers] = useState<Player[]>([]);
+    const [showPlayerForm, setShowPlayerForm] = useState(false);
+    const [currentPlayer, setCurrentPlayer] = useState<Player>({
+        firstName: '',
+        lastName: '',
+        rut: '',
+        age: 0
     });
 
-    const handleTimeSelect = (time: string, duration: number) => {
+    // Estados para datos de la base de datos
+    const [courts, setCourts] = useState<Court[]>([]);
+    const [equipment, setEquipment] = useState<Equipment[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
+
+    // Cargar datos desde la base de datos al inicializar el componente
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                setDataLoading(true);
+                
+                // Cargar canchas desde la API
+                const courtsResponse = await fetch('http://localhost:3001/api/v1/courts');
+                if (courtsResponse.ok) {
+                    const courtsData = await courtsResponse.json();
+                    setCourts(courtsData.map((court: any) => ({
+                        id: court.id,
+                        name: court.name,
+                        description: court.description || "",
+                        price: parseFloat(court.pricePerHour),
+                        imageUrl: "", // Añade imagen por defecto
+                        available: court.status === "available",
+                        maxPlayers: court.capacity
+                    })));
+                }
+                
+                // Cargar equipamiento desde la API
+                const equipmentResponse = await fetch('http://localhost:3001/api/v1/equipment');
+                if (equipmentResponse.ok) {
+                    const equipmentData = await equipmentResponse.json();
+                    setEquipment(equipmentData);
+                } else {
+                    toast.error('Error al cargar el equipamiento');
+                }
+                
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+                toast.error('Error cargando los datos iniciales');
+            } finally {
+                setDataLoading(false);
+            }
+        };
+
+        loadInitialData();
+    }, []);
+
+    const handleTimeSelect = (time: string, duration: number, timeSlot: TimeSlot) => {
         setSelectedTime(time);
         setSelectedDuration(duration);
+        setSelectedTimeSlot(timeSlot);
         setSelectedCourt(null);
     };
 
-    // Y ajusta la función handleCourtSelect
     const handleCourtSelect = (courtId: number) => {
         setSelectedCourt(courtId);
     };
@@ -129,7 +125,6 @@ const ReservationPage: React.FC = () => {
         if (selectedCourt) {
             const court = courts.find(c => c.id === selectedCourt);
             if (court) {
-                // Adjust price based on duration
                 const hourlyRate = court.price;
                 total += (hourlyRate * selectedDuration) / 60;
             }
@@ -143,74 +138,92 @@ const ReservationPage: React.FC = () => {
         return Math.round(total);
     };
 
+    const handleAddPlayer = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (selectedCourt) {
+            const court = courts.find(c => c.id === selectedCourt);
+            if (court && players.length >= court.maxPlayers) {
+                toast.error(`Esta cancha tiene un máximo de ${court.maxPlayers} jugadores`);
+                return;
+            }
+        }
+        setPlayers([...players, currentPlayer]);
+        setCurrentPlayer({ firstName: '', lastName: '', rut: '', age: 0 });
+        setShowPlayerForm(false);
+    };
+
+    const handleDeletePlayer = (index: number) => {
+        setPlayers(players.filter((_, i) => i !== index));
+    };
+
+    const validatePlayersCount = () => {
+        if (selectedCourt) {
+            const court = courts.find(c => c.id === selectedCourt);
+            if (court && players.length > court.maxPlayers) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    // Cargar horarios disponibles cuando cambie la fecha o la cancha seleccionada
     useEffect(() => {
         const loadTimeSlots = async () => {
-            if (!selectedCourt) return;
+            if (!selectedDate || courts.length === 0) return;
 
             try {
                 setIsLoading(true);
-                const courtId = parseInt(selectedCourt.toString()); // Convertir string a number
                 const formattedDate = selectedDate.toISOString().split('T')[0];
-                const slots = await reservationService.getAvailableTimeSlots(courtId, formattedDate);
-                setAvailableTimeSlots(slots);
+                
+                // Usar la cancha seleccionada o la primera disponible
+                const courtToUse = selectedCourt 
+                    ? courts.find(court => court.id === selectedCourt)
+                    : courts.find(court => court.available);
+                
+                if (!courtToUse) {
+                    setAvailableTimeSlots([]);
+                    return;
+                }
+                
+                const slots = await reservationService.getAvailableTimeSlots(courtToUse.id, formattedDate);
+                
+                // Asegurar que startTime y endTime sean objetos Date
+                const formattedSlots = slots.map(slot => ({
+                    ...slot,
+                    startTime: new Date(slot.startTime),
+                    endTime: new Date(slot.endTime)
+                }));
+                
+                setAvailableTimeSlots(formattedSlots);
             } catch (error) {
                 toast.error('Error al cargar los horarios disponibles');
                 console.error(error);
+                setAvailableTimeSlots([]);
             } finally {
                 setIsLoading(false);
             }
         };
 
         loadTimeSlots();
-    }, [selectedDate, selectedCourt]);
+    }, [selectedDate, selectedCourt, courts]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!selectedTimeSlot || !selectedCourt || !user?.id) {
-            toast.error('Por favor, complete todos los campos requeridos');
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-
-            const reservationData: CreateReservationDto = {
-                courtId: selectedCourt.toString(),
-                userId: user.id,
-                startTime: selectedTimeSlot.startTime.toISOString(),
-                endTime: selectedTimeSlot.endTime.toISOString()
-            };
-
-            const reservation = await reservationService.createReservation(reservationData);
-            
-            toast.success('¡Reserva creada exitosamente!');
-
-            // Crear la fecha de inicio
-            // Resetear el formulario
-            setSelectedCourt(null);
-            setSelectedTime(null);
-            setSelectedEquipment([]);
-            setNeedsEquipment(false);
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-            toast.error(`Error al crear la reserva: ${errorMessage}`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Modificar el componente de selección de hora para usar los timeSlots disponibles
     const renderTimeSlots = () => {
-        if (!availableTimeSlots.length) {
+        if (isLoading) {
+            return <p className="text-gray-500">Cargando horarios disponibles...</p>;
+        }
+
+        if (!availableTimeSlots || availableTimeSlots.length === 0) {
             return <p className="text-gray-500">No hay horarios disponibles para esta fecha</p>;
         }
 
         return (
             <div className="grid grid-cols-4 gap-2">
                 {availableTimeSlots.map((slot, index) => {
-                    const startTime = new Date(slot.startTime);
+                    // Asegurar que startTime sea un objeto Date
+                    const startTime = slot.startTime instanceof Date 
+                        ? slot.startTime 
+                        : new Date(slot.startTime);
+                    
                     const timeString = startTime.toLocaleTimeString('es-ES', {
                         hour: '2-digit',
                         minute: '2-digit'
@@ -219,7 +232,7 @@ const ReservationPage: React.FC = () => {
                     return (
                         <button
                             key={index}
-                            onClick={() => setSelectedTime(timeString)}
+                            onClick={() => handleTimeSelect(timeString, selectedDuration, slot)}
                             className={`p-2 rounded ${
                                 selectedTime === timeString
                                     ? 'bg-[#071d40] text-white'
@@ -234,6 +247,117 @@ const ReservationPage: React.FC = () => {
         );
     };
 
+    const renderCourts = () => {
+        if (!selectedTime) {
+            return null;
+        }
+
+        const availableCourts = courts.filter(court => court.available);
+
+        if (availableCourts.length === 0) {
+            return (
+                <div className="text-center py-8">
+                    <p className="text-gray-500 text-lg">No hay canchas disponibles en este horario</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {availableCourts.map(court => (
+                    <div
+                        key={court.id}
+                        onClick={() => handleCourtSelect(court.id)}
+                        className={`${
+                            selectedCourt === court.id ? 'ring-2 ring-blue-500' : ''
+                        } cursor-pointer hover:shadow-lg transition-shadow duration-200`}
+                    >
+                        <CourtCard {...court} />
+                        <div className="mt-2 px-4 py-2 bg-gray-50 rounded-b-lg">
+                            <p className="text-sm text-gray-600">
+                                Capacidad máxima: {court.maxPlayers} jugadores
+                            </p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!selectedTimeSlot || !selectedCourt || !user?.id) {
+            toast.error('Por favor, complete todos los campos requeridos');
+            return;
+        }
+
+        if (players.length === 0) {
+            toast.error('Debe agregar al menos un jugador');
+            return;
+        }
+
+        if (!validatePlayersCount()) {
+            toast.error('El número de jugadores excede el máximo permitido para esta cancha');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+
+            // Asegurar que las fechas sean objetos Date válidos y convertir a ISO string
+            const startTime = selectedTimeSlot.startTime instanceof Date 
+                ? selectedTimeSlot.startTime 
+                : new Date(selectedTimeSlot.startTime);
+            
+            const endTime = selectedTimeSlot.endTime instanceof Date 
+                ? selectedTimeSlot.endTime 
+                : new Date(selectedTimeSlot.endTime);
+
+            const reservationData: CreateReservationDto = {
+                courtId: selectedCourt,  // Ya es number, no necesita toString()
+                userId: user.id,
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                players: players
+            };
+
+            const reservation = await reservationService.createReservation(reservationData);
+
+            toast.success('¡Reserva creada exitosamente!');
+
+            // Reset form
+            setSelectedCourt(null);
+            setSelectedTime(null);
+            setSelectedTimeSlot(null);
+            setSelectedEquipment([]);
+            setNeedsEquipment(false);
+            setPlayers([]);
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            toast.error(`Error al crear la reserva: ${errorMessage}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Mostrar loading mientras se cargan los datos iniciales
+    if (dataLoading) {
+        return (
+            <div className="flex flex-col min-h-screen">
+                <Navbar />
+                <main className="flex-grow pt-28 pb-16 px-4 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#071d40] mx-auto mb-4"></div>
+                        <p className="text-gray-600">Cargando datos...</p>
+                    </div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col min-h-screen">
             <Navbar />
@@ -246,7 +370,6 @@ const ReservationPage: React.FC = () => {
                         <div className="absolute bottom-0 left-0 w-20 h-1 bg-[#071d40] rounded-full"></div>
                     </div>
 
-                    {/* Step 1: Select Date and Time */}
                     <div className="mb-8">
                         <h2 className="text-xl font-semibold text-[#071d40] mb-4">1. Selecciona fecha y hora</h2>
                         <div className="mb-4">
@@ -255,40 +378,21 @@ const ReservationPage: React.FC = () => {
                                 onDateChange={setSelectedDate}
                             />
                         </div>
-                        {selectedCourt && (
-                            <div className="mt-4">
-                                <h3 className="text-lg font-medium mb-2">Horarios disponibles:</h3>
-                                {isLoading ? (
-                                    <p>Cargando horarios disponibles...</p>
-                                ) : (
-                                    renderTimeSlots()
-                                )}
-                            </div>
-                        )}
+                        <div className="mt-4">
+                            <h3 className="text-lg font-medium mb-2">Horarios disponibles:</h3>
+                            {renderTimeSlots()}
+                        </div>
                     </div>
-                    {/* Step 2: Select Court - Only shown after date and time selection */}
+
                     {selectedTime && (
                         <div className="mb-8">
                             <h2 className="text-xl font-semibold text-[#071d40] mb-4">
                                 2. Canchas disponibles para {selectedDate.toLocaleDateString()} a las {selectedTime} ({selectedDuration} min)
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {courts.map(court => (
-                                    <div
-                                        key={court.id}
-                                        onClick={() => court.available && handleCourtSelect(court.id)}
-                                        className={`${
-                                            selectedCourt === court.id ? 'ring-2 ring-blue-500' : ''
-                                        } ${court.available ? 'cursor-pointer' : 'cursor-not-allowed opacity-75'}`}
-                                    >
-                                        <CourtCard {...court} />
-                                    </div>
-                                ))}
-                            </div>
+                            {renderCourts()}
                         </div>
                     )}
 
-                    {/* Step 3: Equipment Selection - Only shown after court selection */}
                     {selectedCourt && (
                         <div className="mb-8">
                             <h2 className="text-xl font-semibold text-[#071d40] mb-4">3. ¿Necesitas equipamiento?</h2>
@@ -319,7 +423,7 @@ const ReservationPage: React.FC = () => {
                                     </button>
                                 </div>
 
-                                {needsEquipment && (
+                                {needsEquipment && equipment.length > 0 && (
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                         {equipment.map(eq => (
                                             <div
@@ -329,11 +433,13 @@ const ReservationPage: React.FC = () => {
                                                 }`}
                                                 onClick={() => toggleEquipment(eq.id)}
                                             >
-                                                <img
-                                                    src={eq.imageUrl}
-                                                    alt={eq.name}
-                                                    className="w-full h-48 object-cover"
-                                                />
+                                                {eq.imageUrl && (
+                                                    <img
+                                                        src={eq.imageUrl}
+                                                        alt={eq.name}
+                                                        className="w-full h-48 object-cover"
+                                                    />
+                                                )}
                                                 <div className="p-4">
                                                     <h3 className="text-lg font-semibold text-[#071d40]">{eq.name}</h3>
                                                     <p className="text-gray-600 text-sm mb-2">{eq.description}</p>
@@ -347,7 +453,110 @@ const ReservationPage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Reservation Summary - Only shown after court selection */}
+                    {selectedCourt && (
+                        <div className="mb-8">
+                            <h2 className="text-xl font-semibold text-[#071d40] mb-4">4. Agregar jugadores</h2>
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => setShowPlayerForm(true)}
+                                    className="bg-[#071d40] text-white px-6 py-3 rounded-md"
+                                >
+                                    Agregar Jugador
+                                </button>
+                                {showPlayerForm && (
+                                    <form onSubmit={handleAddPlayer} className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Nombre</label>
+                                            <input
+                                                type="text"
+                                                value={currentPlayer.firstName}
+                                                onChange={e =>
+                                                    setCurrentPlayer({ ...currentPlayer, firstName: e.target.value })
+                                                }
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Apellido</label>
+                                            <input
+                                                type="text"
+                                                value={currentPlayer.lastName}
+                                                onChange={e =>
+                                                    setCurrentPlayer({ ...currentPlayer, lastName: e.target.value })
+                                                }
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">RUT</label>
+                                            <input
+                                                type="text"
+                                                value={currentPlayer.rut}
+                                                onChange={e =>
+                                                    setCurrentPlayer({ ...currentPlayer, rut: e.target.value })
+                                                }
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700">Edad</label>
+                                            <input
+                                                type="number"
+                                                value={currentPlayer.age}
+                                                onChange={e =>
+                                                    setCurrentPlayer({ ...currentPlayer, age: parseInt(e.target.value) || 0 })
+                                                }
+                                                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+                                                required
+                                                min="1"
+                                            />
+                                        </div>
+                                        <div className="flex space-x-2">
+                                            <button
+                                                type="submit"
+                                                className="bg-[#071d40] text-white px-6 py-3 rounded-md"
+                                            >
+                                                Agregar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPlayerForm(false)}
+                                                className="bg-gray-300 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-400"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                                <div>
+                                    <h3 className="text-lg font-semibold text-[#071d40]">Jugadores:</h3>
+                                    {players.length === 0 ? (
+                                        <p className="text-gray-500">No hay jugadores agregados</p>
+                                    ) : (
+                                        <ul className="space-y-2">
+                                            {players.map((player, index) => (
+                                                <li key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded">
+                                                    <span>
+                                                        {player.firstName} {player.lastName} - {player.rut} ({player.age} años)
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleDeletePlayer(index)}
+                                                        className="text-red-500 hover:text-red-700 font-medium"
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {selectedCourt && (
                         <div className="bg-white rounded-lg shadow-md p-6">
                             <h3 className="text-lg font-semibold text-[#071d40] mb-4">Resumen de tu reserva</h3>
@@ -394,6 +603,21 @@ const ReservationPage: React.FC = () => {
                                 )}
 
                                 <div>
+                                    <p className="text-sm text-gray-500">Jugadores ({players.length})</p>
+                                    {players.length > 0 ? (
+                                        <ul className="list-disc list-inside">
+                                            {players.map((player, index) => (
+                                                <li key={index} className="font-medium">
+                                                    {player.firstName} {player.lastName} - {player.rut} ({player.age} años)
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-gray-500">No hay jugadores agregados</p>
+                                    )}
+                                </div>
+
+                                <div>
                                     <p className="text-sm text-gray-500">Total</p>
                                     <p className="font-medium text-lg">
                                         ${calculateTotal()} CLP
@@ -403,9 +627,9 @@ const ReservationPage: React.FC = () => {
 
                             <button
                                 onClick={handleSubmit}
-                                disabled={isLoading || !selectedTime || !selectedCourt}
+                                disabled={isLoading || !selectedTime || !selectedCourt || players.length === 0}
                                 className={`w-full ${
-                                    isLoading || !selectedTime || !selectedCourt
+                                    isLoading || !selectedTime || !selectedCourt || players.length === 0
                                         ? 'bg-gray-400 cursor-not-allowed'
                                         : 'bg-[#071d40] hover:bg-[#122e5e]'
                                 } text-white py-3 rounded-md transition duration-300`}

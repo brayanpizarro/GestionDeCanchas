@@ -4,18 +4,22 @@ import { Repository, Between } from 'typeorm';
 import { Reservation } from './entities/reservation.entity';
 import { Court } from '../courts/entities/court.entity';
 import { User } from '../users/entities/user.entity';
+import { Player } from './entities/player.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 @Injectable()
-export class ReservationsService {    constructor(
+export class ReservationsService {
+    constructor(
         @InjectRepository(Reservation)
         private readonly reservationsRepository: Repository<Reservation>,
         @InjectRepository(Court)
         private readonly courtsRepository: Repository<Court>,
         @InjectRepository(User)
         private readonly usersRepository: Repository<User>,
+        @InjectRepository(Player)
+        private readonly playersRepository: Repository<Player>
     ) {}
 
     async create(rawDto: unknown): Promise<Reservation> {
@@ -23,17 +27,22 @@ export class ReservationsService {    constructor(
         const dto = plainToInstance(CreateReservationDto, rawDto, {
             excludeExtraneousValues: true,
         });
-        
+
         const validationErrors = await validate(dto);
         if (validationErrors.length > 0) {
             throw new BadRequestException('Invalid reservation data');
         }
 
-        const { courtId, userId, startTime, endTime } = dto;
+        const { courtId, userId, startTime, endTime, players } = dto;
 
         const court = await this.courtsRepository.findOneBy({ id: courtId });
         if (!court) {
             throw new NotFoundException(`Court with ID ${courtId} not found`);
+        }
+
+        // Verify that the number of players does not exceed the court's capacity
+        if (players.length > court.capacity) {
+            throw new BadRequestException(`The number of players exceeds the court's maximum capacity (${court.capacity})`);
         }
 
         const user = await this.usersRepository.findOneBy({ id: userId });
@@ -62,8 +71,7 @@ export class ReservationsService {    constructor(
             throw new BadRequestException('This court is already reserved for the specified time');
         }
 
-        const durationHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-        const amount = Number((durationHours * court.pricePerHour).toFixed(2));
+        const amount = this.calculateAmount(court, startTime, endTime);
 
         const reservation = this.reservationsRepository.create({
             startTime: startDate,
@@ -74,12 +82,32 @@ export class ReservationsService {    constructor(
             user,
         });
 
-        return await this.reservationsRepository.save(reservation);
+        // Save the reservation first to get the ID
+        const savedReservation = await this.reservationsRepository.save(reservation);
+
+        // Create and save the players
+        const playerEntities = players.map(playerDto => {
+            return this.playersRepository.create({
+                ...playerDto,
+                reservation: savedReservation,
+            });
+        });
+
+        savedReservation.players = await this.playersRepository.save(playerEntities);
+
+        return await this.reservationsRepository.save(savedReservation);
+    }
+
+    private calculateAmount(court: Court, startTime: string, endTime: string): number {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        return court.pricePerHour * hours;
     }
 
     async findAll(): Promise<Reservation[]> {
         return await this.reservationsRepository.find({
-            relations: ['court', 'user'],
+            relations: ['court', 'user', 'players'],
         });
     }
 
@@ -90,7 +118,7 @@ export class ReservationsService {    constructor(
 
         return await this.reservationsRepository.find({
             where: { user: { id: userId } },
-            relations: ['court'],
+            relations: ['court', 'players'],
             order: { startTime: 'DESC' },
         });
     }
@@ -102,18 +130,18 @@ export class ReservationsService {    constructor(
 
         const reservation = await this.reservationsRepository.findOne({
             where: { id },
-            relations: ['court', 'user'],
+            relations: ['court', 'user', 'players'],
         });
-        
+
         if (!reservation) {
             throw new NotFoundException(`Reservation with ID ${id} not found`);
         }
-        
+
         return reservation;
     }
 
     async updateStatus(
-        id: number, 
+        id: number,
         status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
     ): Promise<Reservation> {
         if (!Number.isInteger(id) || id <= 0) {
@@ -130,7 +158,7 @@ export class ReservationsService {    constructor(
     }
 
     async getAvailableTimeSlots(
-        courtId: number, 
+        courtId: number,
         date: string
     ): Promise<Array<{ startTime: Date; endTime: Date }>> {
         if (!Number.isInteger(courtId) || courtId <= 0) {
@@ -152,7 +180,7 @@ export class ReservationsService {    constructor(
         }
 
         startOfDay.setHours(0, 0, 0, 0);
-        
+
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
 
@@ -167,10 +195,10 @@ export class ReservationsService {    constructor(
 
         const availableTimeSlots: Array<{ startTime: Date; endTime: Date }> = [];
         const slotDuration = 60; // duration in minutes
-        
+
         const openingTime = new Date(date);
         openingTime.setHours(8, 0, 0, 0);
-        
+
         const closingTime = new Date(date);
         closingTime.setHours(22, 0, 0, 0);
 
@@ -182,7 +210,7 @@ export class ReservationsService {    constructor(
 
             const isAvailable = !reservations.some(reservation => {
                 return (currentSlot >= reservation.startTime && currentSlot < reservation.endTime) ||
-                       (slotEnd > reservation.startTime && slotEnd <= reservation.endTime);
+                    (slotEnd > reservation.startTime && slotEnd <= reservation.endTime);
             });
 
             if (isAvailable) {

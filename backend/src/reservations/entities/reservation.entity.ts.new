@@ -1,23 +1,23 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn } from "typeorm";
-import { User } from "../../users/entities/user.entity";
-import { Court } from "../../courts/entities/court.entity";
-import { Player } from "./player.entity";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
+import { Court } from '../../courts/entities/court.entity';
+import { Player } from './player.entity';
 
 @Entity()
 export class Reservation {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ type: "timestamp" })
+    @Column({ type: 'timestamp' })
     startTime: Date;
 
-    @Column({ type: "timestamp" })
+    @Column({ type: 'timestamp' })
     endTime: Date;
 
-    @Column({ default: "pending" })
+    @Column({ default: 'pending' })
     status: string;
 
-    @Column({ type: "decimal", precision: 10, scale: 2 })
+    @Column({ type: 'decimal', precision: 10, scale: 2 })
     amount: number;
 
     @ManyToOne(() => User, user => user.reservations)

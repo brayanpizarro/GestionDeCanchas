@@ -1,34 +1,41 @@
-import { Reservation } from '../../reservations/entities/reservation.entity';
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Reservation } from '../../reservations/entities/reservation.entity';
 
 @Entity()
 export class Court {
     @PrimaryGeneratedColumn()
-    id!: number;
-
-    @Column({ length: 100 })
-    name!: string;
+    id: number;
 
     @Column()
-    type!: string;
+    name: string;
 
-    @Column()
-    capacity!: number;
+    @Column({ nullable: true })
+    description: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
-    pricePerHour!: number;
+    @Column({ nullable: true })
+    location: string;
 
-    @Column({ type: 'float', default: 4.5 })
-    rating!: number;    @Column({
-        type: 'enum',
-        enum: ['available', 'occupied', 'maintenance'],
-        default: 'available'
-    })
-    status!: string;
+    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+    pricePerHour: number;
 
-    @Column({ type: 'text', nullable: true })
-    image?: string;
+    @Column({ default: 'available' })
+    status: string;
 
-    @OneToMany(() => Reservation, (reservation) => reservation.court)
-    reservations!: Reservation[];
+    @Column({ nullable: true })
+    type: string;
+
+    @Column({ nullable: true })
+    capacity: number;
+
+    @Column({ type: 'decimal', precision: 3, scale: 2, default: 4.5 })
+    rating: number;
+
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    createdAt: Date;
+
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+    updatedAt: Date;
+
+    @OneToMany(() => Reservation, reservation => reservation.court)
+    reservations: Reservation[];
 }

@@ -29,7 +29,7 @@ export interface Reservation {
     };
 }
 
-const API_URL = 'http://localhost:3000/api/v1/reservations';
+const API_URL = 'http://localhost:3001/api/v1';
 
 export interface CreateReservationDTO {
     courtId: number;

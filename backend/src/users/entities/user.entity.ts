@@ -5,8 +5,10 @@ import {
     DeleteDateColumn,
     CreateDateColumn,
     UpdateDateColumn,
+    OneToMany
   } from 'typeorm';
-  import { UserRole } from './user-role.enum';
+import { UserRole } from './user-role.enum';
+import { Reservation } from '../../reservations/entities/reservation.entity';
 
 
 
@@ -45,5 +47,7 @@ import {
   
     @DeleteDateColumn()
     deletedAt: Date;
+
+    @OneToMany(() => Reservation, reservation => reservation.user)
+    reservations: Reservation[];
   }
-  

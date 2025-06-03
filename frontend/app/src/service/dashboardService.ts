@@ -2,8 +2,8 @@ const API_URL = 'http://localhost:3001/api/v1';
 
 export interface WeeklyStats {
     name: string;
-    reservas: number;
-    ingresos: number;
+    reserves: number;
+    ingress: number;
 }
 
 export interface CourtUsage {
@@ -25,7 +25,7 @@ export interface RecentReservation {
 export interface TopPlayer {
     id: number;
     name: string;
-    reservas: number;
+    reserves: number;
     gasto: string;
     nivel: string;
     avatar: string;
@@ -75,12 +75,12 @@ export interface Reservation {
 }
 
 // Admin email constant
-export const ADMIN_CREDENTIALS = {email : 'AdministradorUcn@gmail.com', password: 'Admin2025:)'};
+export const ADMIN_CREDENTIALS = {email : 'administradorucn@gmail.com', password: 'Admin2025:)'};
 
 class DashboardService {
     private getAuthHeaders() {
         return {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
         };
     }
@@ -118,26 +118,14 @@ class DashboardService {
     }
 
     async createCourt(courtData: Omit<Court, 'id' | 'rating' | 'reservasHoy'>): Promise<Court> {
-        try {
-            let processedData = { ...courtData };
-            if (processedData.image && !processedData.image.startsWith('data:')) {
-                const response = await fetch(processedData.image);
-                const blob = await response.blob();
-                const reader = new FileReader();
-                const base64Image = await new Promise<string>((resolve) => {
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(blob);
-                });
-                processedData.image = base64Image;
-            }
-
-            const response = await fetch(`${API_URL}/courts`, {
-                method: 'POST',
-                headers: this.getAuthHeaders(),
-                body: JSON.stringify(processedData)
-            });
-            return this.handleResponse<Court>(response);
-        } catch (error) {
+    try {
+        const response = await fetch(`${API_URL}/courts`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify(courtData) // Ya incluye pricePerHour
+        });
+        return this.handleResponse<Court>(response);
+    }   catch (error) {
             console.error('Error creating court:', error);
             throw error;
         }

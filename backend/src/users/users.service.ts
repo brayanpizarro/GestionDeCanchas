@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between, MoreThanOrEqual } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { Between, MoreThanOrEqual } from 'typeorm';
 import { UserRole, UserStats } from './types/user.types';
+import { TopPlayerRaw } from './types/top-player.types';
 
 @Injectable()
 export class UsersService {
@@ -49,12 +49,19 @@ export class UsersService {
     return await this.userRepository.softDelete(id); //eliminar el usuario de la base de datos (se le pasa el id)
     //return await this.useraRepository.softRemove(id); //eliminar el usuario de la base de datos (se le pasa ña instancia del usuario)
   }
-
   async getActivePlayerCount(): Promise<number> {
     return this.userRepository.count({
       where: {
         status: 'active',
         role: UserRole.USER
+      }
+    });
+  }
+
+  async countActive(): Promise<number> {
+    return this.userRepository.count({
+      where: {
+        status: 'active'
       }
     });
   }
@@ -100,36 +107,37 @@ export class UsersService {
       growth,
       lastRegistered: lastRegistered?.createdAt || null
     };
-  }
-
-  async getTopPlayers() {
+  }  async getTopPlayers() {
     const users = await this.userRepository
       .createQueryBuilder('user')
       .leftJoin('user.reservations', 'reservation')
       .select([
-        'user.id',
-        'user.name',
-        'COUNT(reservation.id) as reservasCount',
-        'SUM(reservation.amount) as totalGasto'
+        'user.id as user_id',
+        'user.name as user_name',
+        'COUNT(reservation.id) as reservationCount',
+        'SUM(reservation.amount) as totalSpent'
       ])
-      .groupBy('user.id')
-      .orderBy('reservasCount', 'DESC')
+      .groupBy('user.id, user.name')
+      .orderBy('reservationCount', 'DESC')
       .limit(4)
-      .getRawMany();
+      .getRawMany() as TopPlayerRaw[];
 
     return users.map(user => ({
-      id: user.id,
-      name: user.name,
-      reservas: parseInt(user.reservasCount) || 0,
-      gasto: `$${(parseFloat(user.totalGasto) || 0).toLocaleString()}`,
-      nivel: this.calculateLevel(parseInt(user.reservasCount) || 0),
-      avatar: user.name.split(' ').map((n: string) => n[0]).join('')
+      id: user.user_id,
+      name: user.user_name,
+      reservas: parseInt(user.reservationCount) || 0,
+      gasto: `$${(parseFloat(user.totalSpent) || 0).toLocaleString()}`,
+      nivel: this.calculateLevel(parseInt(user.reservationCount) || 0),
+      avatar: user.user_name.split(' ').map((n: string) => n[0]).join('')
     }));
   }
-
   private calculateLevel(reservasCount: number): string {
-    if (reservasCount >= 20) return 'Avanzado';
-    if (reservasCount >= 10) return 'Intermedio';
+    if (reservasCount >= 20) {
+      return 'Avanzado';
+    }
+    if (reservasCount >= 10) {
+      return 'Intermedio';
+    }
     return 'Principiante';
   }
 }

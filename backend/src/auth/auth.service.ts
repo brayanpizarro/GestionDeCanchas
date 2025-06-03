@@ -28,8 +28,10 @@ export class AuthService {
         return await this.usersService.create(newUser); // Llama al servicio de usuarios para crear un nuevo usuario
     }    async login(loginDto: LoginDto) {
         try {
-            const user = await this.usersService.findOneByEmail(loginDto.email);
+            console.log('Login attempt for email:', loginDto.email);
+            const user = await this.usersService.findOneByEmail(loginDto.email.toLowerCase());
             if (!user) {
+                console.log('User not found for email:', loginDto.email);
                 throw new UnauthorizedException('Invalid credentials');
             }
 

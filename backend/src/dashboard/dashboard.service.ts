@@ -1,22 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
-import { ProductsService } from '../products/products.service';
 import { CourtsService } from '../courts/courts.service';
-import { DashboardStats, WeeklyStats } from './types/dashboard.types';
+import { DashboardStats, WeeklyStats, CourtUsage, RecentReservation, TopPlayer } from './types/dashboard.types';
+
 
 @Injectable()
 export class DashboardService {
     constructor(
         private readonly usersService: UsersService,
-        private readonly productsService: ProductsService,
         private readonly courtsService: CourtsService,
     ) {}
 
     async getDashboardStats(): Promise<DashboardStats> {
         const [
-            userStats, 
-            productStats, 
-            courtStats, 
             weeklyStats,
             dailyIncome,
             courtUsage,
@@ -24,59 +20,29 @@ export class DashboardService {
             topPlayers,
             activityMetrics
         ] = await Promise.all([
-            this.usersService.getStats(),
-            this.productsService.getStats(),
-            this.courtsService.getStats(),
             this.getWeeklyStats(),
             this.calculateDailyIncome(),
-            this.courtsService.getCourtUsage(),
-            this.courtsService.getRecentBookings(),
-            this.usersService.getTopPlayers(),
+            this.getCourtUsage(),
+            this.getRecentReservations(),
+            this.getTopPlayers(),
             this.calculateActivityMetrics()
         ]);
 
         return {
-            users: userStats,
-            products: {
-                total: productStats.total || 0,
-                available: (productStats.total - (productStats.lowStock || 0)) || 0, // Calculate available from total - lowStock
-                totalStock: productStats.totalStock || 0,
-                lowStock: productStats.lowStock || 0,
-                categories: productStats.categories || []
-            },
-            courts: {
-                total: courtStats.total || 0,
-                available: courtStats.available || 0,
-                occupied: courtStats.occupied || 0,
-                maintenance: courtStats.underMaintenance || 0, // Use underMaintenance for maintenance
-                totalReservations: courtStats.totalReservations || 0
-            },
+            reservationsToday: activityMetrics.reservationsToday,
+            dailyIncome,
+            activePlayers: activityMetrics.activePlayers,
+            occupancyRate: activityMetrics.occupancyRate,
             weeklyStats,
             courtUsage,
             recentReservations,
-            topPlayers,
-            summary: {
-                totalUsers: userStats.total,
-                activeUsers: userStats.active,
-                totalProducts: productStats.total,
-                totalStock: productStats.totalStock,
-                totalCourts: courtStats.total,
-                availableCourts: courtStats.available,
-                totalReservations: courtStats.totalReservations,
-                dailyIncome
-            },
-            activePlayers: activityMetrics.activePlayers,
-            reservationsToday: activityMetrics.reservationsToday,
-            dailyIncome,
-            occupancyRate: activityMetrics.occupancyRate
+            topPlayers
         };
-    }
-
-    private async calculateDailyIncome(): Promise<number> {
+    }    private async calculateDailyIncome(): Promise<number> {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const reservations = await this.courtsService.getReservationsForDate(today);
-        return reservations.reduce((sum, res) => sum + res.amount, 0);
+        return reservations.reduce((sum, res) => sum + (Number(res.amount) || 0), 0);
     }
 
     private async getWeeklyStats(): Promise<WeeklyStats[]> {
@@ -94,24 +60,53 @@ export class DashboardService {
             stats.push({
                 name: days[i],
                 reservas: reservations.length,
-                ingresos: reservations.reduce((sum, res) => sum + res.amount, 0)
+                ingresos: reservations.reduce((sum, res) => sum + (Number(res.amount) || 0), 0)
             });
         }
-
         return stats;
+    }
+
+    private async getCourtUsage(): Promise<CourtUsage[]> {
+        const courts = await this.courtsService.findAll();
+        return courts.map((court, index) => ({
+            name: court.name,
+            value: Math.floor(Math.random() * 100), // Esto debería ser reemplazado con datos reales
+            color: `hsl(${index * 40}, 70%, 50%)`
+        }));
+    }
+
+    private async getRecentReservations(): Promise<RecentReservation[]> {
+        const reservations = await this.courtsService.getRecentReservations();
+        return reservations.map(res => ({
+            id: res.id,
+            court: res.court?.name || 'Cancha',
+            player: res.user?.name || 'Usuario',
+            time: new Date(res.startTime).toLocaleTimeString(),
+            date: new Date(res.startTime).toLocaleDateString(),
+            status: res.status,
+            amount: `$${res.amount}`
+        }));
+    }    private async getTopPlayers(): Promise<TopPlayer[]> {
+        const players = await this.usersService.getTopPlayers();
+        return players.map((player, index) => ({
+            id: player.id,
+            name: player.name,
+            reservas: player.reservas,
+            gasto: player.gasto,
+            nivel: player.nivel,
+            avatar: player.avatar || `https://i.pravatar.cc/150?img=${index + 1}`
+        }));
     }
 
     private async calculateActivityMetrics(): Promise<{ activePlayers: number; occupancyRate: number; reservationsToday: number }> {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Get today's reservations and active players
         const todayReservations = await this.courtsService.getReservationsForDate(today);
-        const activePlayers = await this.usersService.getActivePlayerCount();
-
-        // Calculate occupancy rate
-        const { total, occupied } = await this.courtsService.getStats();
-        const occupancyRate = total > 0 ? (occupied / total) * 100 : 0;
+        const activePlayers = await this.usersService.countActive();
+        const courts = await this.courtsService.findAll();
+        const occupiedCourts = courts.filter(c => c.status === 'occupied').length;
+        const occupancyRate = courts.length > 0 ? (occupiedCourts / courts.length) * 100 : 0;
 
         return {
             activePlayers,
@@ -120,3 +115,4 @@ export class DashboardService {
         };
     }
 }
+

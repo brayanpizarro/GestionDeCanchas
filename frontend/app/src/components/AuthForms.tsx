@@ -68,13 +68,16 @@ const AuthForms: React.FC = () => {
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             return;
-        }
-
-        setIsLoading(true);
+        }        setIsLoading(true);
         try {
-            await signIn(loginData.email, loginData.password);
-            // Redirigir al inicio en lugar del perfil
-            navigate('/');
+            const result = await signIn(loginData.email, loginData.password);
+            
+            // Redirigir basado en el rol del usuario
+            if (result?.user?.role === 'admin') {
+                navigate('/admin');
+            } else {
+                navigate('/');
+            }
         } catch (err: any) {
             setErrors({ apiError: err.message || 'Error al iniciar sesión' });
         } finally {

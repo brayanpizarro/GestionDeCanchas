@@ -7,7 +7,7 @@ import { CreateCourtDto } from './dto/create-court.dto';
 import { UpdateCourtDto } from './dto/update-court.dto';
 
 @Injectable()
-export class CourtsService {
+export class CourtsService {  // Added 'export' keyword here
     constructor(
         @InjectRepository(Court)
         private courtsRepository: Repository<Court>,
@@ -25,6 +25,14 @@ export class CourtsService {
 
     async findAll(): Promise<Court[]> {
         return await this.courtsRepository.find();
+    }
+
+    async getRecentReservations(): Promise<Reservation[]> {
+        return this.reservationsRepository.find({
+            relations: ['court', 'user'],
+            order: { createdAt: 'DESC' },
+            take: 5
+        });
     }
 
     async findOne(id: number): Promise<Court> {
@@ -78,11 +86,11 @@ export class CourtsService {
 
         return reservations.map(res => ({
             id: res.id.toString(),
-            courtName: res.court.name,
-            userName: res.user.name,
+            courtName: res.court?.name || 'Sin cancha',
+            userName: res.user?.name || 'Sin usuario',
             date: res.startTime,
-            status: res.status,
-            amount: res.amount
+            status: res.status || 'pending',
+            amount: Number(res.amount) || 0
         }));
     }
 
@@ -95,7 +103,7 @@ export class CourtsService {
             const totalSlots = 14 * 12; // 14 días * 12 horas por día
             const reservedSlots = court.reservations?.length || 0;
             const usage = (reservedSlots / totalSlots) * 100;
-            const revenue = court.reservations?.reduce((sum, res) => sum + (res.amount || 0), 0) || 0;
+            const revenue = court.reservations?.reduce((sum, res) => sum + (Number(res.amount) || 0), 0) || 0;
 
             return {
                 id: court.id.toString(),
@@ -106,7 +114,9 @@ export class CourtsService {
                 revenue: revenue
             };
         });
-    }    async getStats() {
+    }
+
+    async getStats() {
         const courts = await this.findAll();
         const available = courts.filter(court => court.status === 'available');
         const maintenance = courts.filter(court => court.status === 'maintenance');

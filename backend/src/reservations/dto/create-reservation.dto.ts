@@ -1,5 +1,23 @@
-import { IsNotEmpty, IsDateString, IsNumber, IsPositive } from 'class-validator';
-import { Expose } from 'class-transformer';
+import { IsNotEmpty, IsString, IsNumber, IsArray, ValidateNested, IsISO8601, IsPositive } from 'class-validator';
+import { Expose, Type } from 'class-transformer';
+
+export class PlayerDto {
+    @IsString()
+    @IsNotEmpty()
+    firstName: string;
+
+    @IsString()
+    @IsNotEmpty()
+    lastName: string;
+
+    @IsString()
+    @IsNotEmpty()
+    rut: string;
+
+    @IsNumber()
+    @IsNotEmpty()
+    age: number;
+}
 
 export class CreateReservationDto {
     @Expose()
@@ -16,11 +34,17 @@ export class CreateReservationDto {
 
     @Expose()
     @IsNotEmpty()
-    @IsDateString()
+    @IsISO8601()
     readonly startTime!: string;
 
     @Expose()
     @IsNotEmpty()
-    @IsDateString()
+    @IsISO8601()
     readonly endTime!: string;
+
+    @Expose()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => PlayerDto)
+    readonly players!: PlayerDto[];
 }

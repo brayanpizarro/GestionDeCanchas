@@ -30,6 +30,35 @@ interface StatCardProps {
   subtitle?: string;
 }
 
+// Función para comprimir imagen
+const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calcular nuevas dimensiones
+      const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+      const newWidth = img.width * ratio;
+      const newHeight = img.height * ratio;
+      
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      
+      // Dibujar imagen redimensionada
+      ctx?.drawImage(img, 0, 0, newWidth, newHeight);
+      
+      // Convertir a base64
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressedDataUrl);
+    };
+    
+    img.onerror = () => reject(new Error('Error al procesar la imagen'));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 const StatCard: React.FC<StatCardProps> = ({ title, value, change, icon: Icon, color, subtitle }) => (
   <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-6`}>
     <div className="flex items-center justify-between">
@@ -56,24 +85,111 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
     type: 'covered',
     status: 'available',
     capacity: 4,
-    pricePerHour: 0,
+    pricePerHour: 15000, // Valor por defecto
     image: ''
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona un archivo de imagen válido');
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen es demasiado grande. Máximo 5MB');
+      return;
+    }
+
+    try {
+      setIsProcessingImage(true);
       setImageFile(file);
-      // Convert image to base64 for preview and sending to API
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          image: reader.result as string
-        }));
-      };
-      reader.readAsDataURL(file);
+      
+      // Comprimir imagen
+      const compressedImage = await compressImage(file, 800, 0.7);
+      
+      setFormData(prev => ({
+        ...prev,
+        image: compressedImage
+      }));
+    } catch (error) {
+      console.error('Error al procesar la imagen:', error);
+      alert('Error al procesar la imagen. Intenta con otra imagen.');
+    } finally {
+      setIsProcessingImage(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof CreateCourtFormData, value: any) => {
+    setFormData(prev => {
+      const newData = { ...prev };
+      
+      if (field === 'capacity' || field === 'pricePerHour') {
+        // Manejar campos numéricos
+        const numValue = value === '' ? 0 : Number(value);
+        newData[field] = isNaN(numValue) ? 0 : numValue;
+      } else {
+        newData[field] = value;
+      }
+      
+      return newData;
+    });
+  };
+
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+    
+    if (!formData.name.trim()) {
+      errors.push('El nombre de la cancha es requerido');
+    }
+    
+    if (!formData.capacity || formData.capacity < 2) {
+      errors.push('La capacidad debe ser al menos 2 personas');
+    }
+    
+    if (!formData.pricePerHour || formData.pricePerHour <= 0) {
+      errors.push('El precio por hora debe ser mayor a 0');
+    }
+    
+    if (!formData.image) {
+      errors.push('Debes seleccionar una imagen para la cancha');
+    }
+    
+    return errors;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const errors = validateForm();
+    if (errors.length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    setFormErrors([]);
+    
+    try {
+      await onSubmit(formData);
+      // Reset form
+      setFormData({
+        name: '',
+        type: 'covered',
+        status: 'available',
+        capacity: 4,
+        pricePerHour: 15000,
+        image: ''
+      });
+      setImageFile(null);
+    } catch (error) {
+      console.error('Error al crear la cancha:', error);
     }
   };
 
@@ -81,7 +197,7 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full">
+      <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold">Agregar Nueva Cancha</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
@@ -89,31 +205,39 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
           </button>
         </div>
 
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          await onSubmit(formData);
-        }}>
+        {formErrors.length > 0 && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            <ul className="list-disc list-inside">
+              {formErrors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombre de la Cancha
+                Nombre de la Cancha *
               </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => handleInputChange('name', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ej: Cancha de Fútbol 1"
                 required
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de Cancha
+                Tipo de Cancha *
               </label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as 'covered' | 'uncovered' })}
+                onChange={(e) => handleInputChange('type', e.target.value as 'covered' | 'uncovered')}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
@@ -124,36 +248,39 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Capacidad
+                Capacidad (personas) *
               </label>
               <input
                 type="number"
                 min="2"
-                value={formData.capacity}
-                onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                max="50"
+                value={formData.capacity || ''}
+                onChange={(e) => handleInputChange('capacity', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ej: 10"
                 required
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Precio por Hora
+                Precio por Hora (CLP) *
               </label>
               <input
                 type="number"
-                min="0"
+                min="1000"
                 step="1000"
-                value={formData.pricePerHour}
-                onChange={(e) => setFormData({ ...formData, pricePerHour: parseInt(e.target.value) })}
+                value={formData.pricePerHour || ''}
+                onChange={(e) => handleInputChange('pricePerHour', e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ej: 15000"
                 required
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Imagen de la Cancha
+                Imagen de la Cancha *
               </label>
               <input
                 type="file"
@@ -161,14 +288,21 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
                 onChange={handleImageChange}
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                disabled={isProcessingImage}
               />
-              {formData.image && (
+              {isProcessingImage && (
+                <p className="text-sm text-blue-600 mt-1">Procesando imagen...</p>
+              )}
+              {formData.image && !isProcessingImage && (
                 <div className="mt-2">
                   <img 
                     src={formData.image} 
                     alt="Vista previa" 
-                    className="w-full h-40 object-cover rounded-lg"
+                    className="w-full h-40 object-cover rounded-lg border"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Imagen procesada - Tamaño reducido para optimizar carga
+                  </p>
                 </div>
               )}
             </div>
@@ -183,9 +317,10 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                disabled={isProcessingImage}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Crear Cancha
+                {isProcessingImage ? 'Procesando...' : 'Crear Cancha'}
               </button>
             </div>
           </div>
@@ -223,25 +358,49 @@ function AdminDashboard() {
       setLoading(false);
     }
   };
+
   const handleCreateCourt = async (data: CreateCourtFormData) => {
     try {
       setError(null);
+      
+      // Validar datos antes de enviar
+      if (!data.name.trim()) {
+        throw new Error('El nombre de la cancha es requerido');
+      }
+      
+      if (!data.image) {
+        throw new Error('La imagen es requerida');
+      }
+      
       const courtData = {
-        name: data.name,
+        name: data.name.trim(),
         type: data.type,
         status: 'available' as const,
-        capacity: data.capacity,
-        pricePerHour: data.pricePerHour,
+        capacity: Number(data.capacity),
+        pricePerHour: Number(data.pricePerHour),
         image: data.image
       };
+
+      console.log('Enviando datos de la cancha:', {
+        ...courtData,
+        image: courtData.image.substring(0, 50) + '...' // Log truncado para la imagen
+      });
 
       const newCourt = await dashboardService.createCourt(courtData);
       setCourts(prevCourts => [...prevCourts, newCourt]);
       setIsCreateCourtModalOpen(false);
       await loadDashboardData(); // Refresh all data
+      
+      // Mostrar mensaje de éxito
+      alert('Cancha creada exitosamente');
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear la cancha');
+      const errorMessage = err instanceof Error ? err.message : 'Error al crear la cancha';
+      setError(errorMessage);
       console.error('Error creating court:', err);
+      
+      // Mostrar error al usuario
+      alert(`Error: ${errorMessage}`);
     }
   };
 
@@ -259,6 +418,12 @@ function AdminDashboard() {
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
           <strong className="font-bold">Error: </strong>
           <span className="block sm:inline">{error}</span>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          >
+            Recargar página
+          </button>
         </div>
       </div>
     );
@@ -292,6 +457,18 @@ function AdminDashboard() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <span className="block sm:inline">{error}</span>
+            <button 
+              onClick={() => setError(null)}
+              className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           <StatCard
             title="Reservas Hoy"
@@ -321,7 +498,7 @@ function AdminDashboard() {
 
         <div className="bg-white shadow rounded-lg">
           <div className="p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Canchas</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Canchas ({courts.length})</h2>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>
@@ -344,32 +521,40 @@ function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {courts.map((court) => (
-                    <tr key={court.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {court.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {court.type === 'covered' ? 'Cubierta' : 'Descubierta'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {court.capacity} personas
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        ${court.pricePerHour.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          court.status === 'available' ? 'bg-green-100 text-green-800' :
-                          court.status === 'occupied' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {court.status === 'available' ? 'Disponible' :
-                           court.status === 'occupied' ? 'Ocupada' : 'Mantenimiento'}
-                        </span>
+                  {courts.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                        No hay canchas registradas. Haz clic en "Nueva Cancha" para agregar una.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    courts.map((court) => (
+                      <tr key={court.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {court.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {court.type === 'covered' ? 'Cubierta' : 'Descubierta'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {court.capacity} personas
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          ${court.pricePerHour.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            court.status === 'available' ? 'bg-green-100 text-green-800' :
+                            court.status === 'occupied' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {court.status === 'available' ? 'Disponible' :
+                             court.status === 'occupied' ? 'Ocupada' : 'Mantenimiento'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

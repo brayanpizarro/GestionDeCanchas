@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.tsx'; 
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
+import AdminGuard from './guards/AdminGuard';
 import ReservationPage from './pages/ReservationPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from "./pages/admin-dashboard";
@@ -18,7 +19,14 @@ function App() {
                         <Route path="/auth" element={<AuthPage />} />
                         <Route path="/reservation" element={<ReservationPage />} />
                         <Route path="/profile" element={<ProfilePage />} />
-                        <Route path="/admin" element={<AdminDashboard/>} />
+                        <Route 
+                            path="/admin" 
+                            element={
+                                <AdminGuard>
+                                    <AdminDashboard/>
+                                </AdminGuard>
+                            } 
+                        />
                     </Routes>
                     
                     {/* Toaster para las notificaciones */}

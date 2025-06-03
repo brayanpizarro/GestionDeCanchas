@@ -63,14 +63,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Agregar timeout para evitar esperas infinitas
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
-
-      const response = await fetch('http://localhost:3001/api/v1/auth/login', { 
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout      console.log('Login attempt with:', { email, password: '***' });
+      const response = await fetch('http://localhost:3001/api/v1/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
         signal: controller.signal,
       });
 
@@ -91,18 +90,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!data.user || !data.token) {
         throw new Error('Respuesta del servidor inválida: faltan datos de usuario o token');
       }
-      
-      // Si el login es exitoso, usar la función login para guardar los datos
+        // Si el login es exitoso, usar la función login para guardar los datos
       login(data.user, data.token);
       
-    } catch (error) {
+      // Devolver los datos para que podamos usarlos en el componente
+      return data;} catch (error) {
       console.error('Error en signIn:', error);
       
       // Proporcionar mensajes de error más específicos
       if (error.name === 'AbortError') {
         throw new Error('Tiempo de espera agotado. Verifica que el servidor esté ejecutándose.');
       } else if (error.message.includes('Failed to fetch')) {
-        throw new Error('No se puede conectar al servidor. Verifica que esté ejecutándose en http://localhost:3000');
+        throw new Error('No se puede conectar al servidor. Verifica que esté ejecutándose en http://localhost:3001');
       } else {
         throw error;
       }

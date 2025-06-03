@@ -1,0 +1,90 @@
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
+import { Court } from '../../courts/entities/court.entity';
+import { Player } from './player.entity';
+
+@Entity()
+export class Reservation {
+    @PrimaryGeneratedColumn()
+    id: number;
+
+    @Column({ type: 'timestamp' })
+    startTime: Date;
+
+    @Column({ type: 'timestamp' })
+    endTime: Date;
+
+    @Column({ default: 'pending' })
+    status: string;
+
+    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    amount: number;
+
+    @ManyToOne(() => User, user => user.reservations)
+    user: User;
+
+    @Column()
+    userId: number;
+
+    @ManyToOne(() => Court, court => court.reservations)
+    court: Court;
+
+    @Column()
+    courtId: number;
+
+    @OneToMany(() => Player, player => player.reservation, { cascade: true })
+    players: Player[];
+
+    @CreateDateColumn()
+    createdAt: Date;
+}
+
+    @ManyToOne(() => User, user => user.reservations)
+    user: User;
+
+    @Column()
+    userId: number;
+
+    @ManyToOne(() => Court, court => court.reservations)
+    court: Court;
+
+    @Column()
+    courtId: number;
+
+    @OneToMany(() => Player, player => player.reservation, { cascade: true })
+    players: Player[];
+
+    @CreateDateColumn()
+    createdAt: Date;
+}
+
+@Entity()
+export class Reservation {
+    @PrimaryGeneratedColumn()
+    id: number;
+
+    @Column()
+    startTime: Date;
+
+    @Column()
+    endTime: Date;
+
+    @Column()
+    status: string;
+
+    @Column()
+    amount: number;
+
+    @ManyToOne(() => User, user => user.reservations)
+    user: User;
+
+    @ManyToOne(() => Court, court => court.reservations)
+    court: Court;
+
+    @OneToMany(() => Player, player => player.reservation, { cascade: true })
+    players: Player[];
+
+    @CreateDateColumn()
+    createdAt: Date;
+}
+export class Reservation

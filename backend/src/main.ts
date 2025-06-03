@@ -1,43 +1,43 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ValidationPipe } from '@nestjs/common';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const configService = app.get(ConfigService);
-  const logger = new Logger('Bootstrap');
-
-  // CORS Configuration
+  
+  // Configurar límites de payload para archivos grandes
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  
+  // Configurar CORS
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN') || true, // Use env variable in production
+    origin: ['http://localhost:3000', 'http://localhost:5173'], // Agrega tu puerto de frontend
     credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
-    exposedHeaders: ['Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
-
-  // Global prefix
-  app.setGlobalPrefix('api/v1');
-
-  // Global pipes
+  
+  // Configurar validación global
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true, // Additional transformation options
-      },
-    })
+    }),
   );
-
-  // Get port from environment or use 3001 as fallback
-  const port = configService.get<number>('PORT') || 3001;
   
-  await app.listen(port, () => {
-    logger.log(`Application is running on port ${port}`);
-  });
+  // Configurar prefijo global para las APIs
+  app.setGlobalPrefix('api/v1');
+  
+  const port = process.env.PORT || 3001;
+  await app.listen(port);
+  
+  console.log(`🚀 Servidor corriendo en http://localhost:${port}`);
+  console.log(`📚 API disponible en http://localhost:${port}/api/v1`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Error iniciating app:', error);
+  process.exit(1);
+});

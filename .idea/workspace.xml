@@ -6,30 +6,21 @@
   <component name="ChangeListManager">
     <list default="true" id="090e0ad7-4268-4fe7-b846-fbfb24ab1492" name="Changes" comment="Integrate court selection with backend and available time slots functionality. Update dependencies accordingly.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/app.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/app.module.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/auth/auth.controller.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/auth/auth.controller.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/auth/auth.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/auth/auth.module.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/auth/auth.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/auth/auth.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/auth/dto/register.dto.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/auth/dto/register.dto.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/users/entities/user.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/users/entities/user.entity.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/users/users.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/users/users.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/tsconfig.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/AuthForms.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/AuthForms.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Footer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Footer.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Hero.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Hero.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Navbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Navbar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/ReservationCalendar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/ReservationCalendar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/index.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/pages/AuthPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/pages/AuthPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/dashboard.controller.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/dashboard.controller.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/dashboard.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/dashboard.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/dashboard.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/dashboard.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/types/dashboard.types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/types/dashboard.types.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/reservations/dto/create-reservation.dto.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/dto/create-reservation.dto.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/reservations/entities/reservation.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/entities/reservation.entity.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/reservations/reservations.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/reservations.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/reservations/reservations.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/reservations.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/context/AuthContext.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/app/src/pages/ReservationPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/pages/ReservationPage.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/app/src/service/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/authService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/tailwind.config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/yarn.lock" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/yarn.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/dashboardService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/dashboardService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/profileService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/profileService.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -84,7 +75,7 @@
     &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
     &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
     &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;ml.llm.LLMConfigurable&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
     &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\fabri\\IdeaProjects\\GestionCanchas-UCN\\frontend\\app\\node_modules\\typescript\\lib&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
@@ -148,6 +139,8 @@
       <workItem from="1748522826808" duration="5814000" />
       <workItem from="1748543397888" duration="1377000" />
       <workItem from="1748878836263" duration="239000" />
+      <workItem from="1748905015684" duration="148000" />
+      <workItem from="1748905209220" duration="7795000" />
     </task>
     <task id="LOCAL-00001" summary="Initialize frontend project with main app structure and components&#10;&#10;Set up a Vite React TypeScript project for &quot;Canchas UCENIN&quot; featuring key components such as Navbar, Hero, Features, and Footer. Added styling with TailwindCSS, implemented smooth scrolling, and included utility components like Button and Input. Configuration files and Git ignore settings were also established.">
       <option name="closed" value="true" />
