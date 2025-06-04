@@ -28,10 +28,18 @@ const Navbar: React.FC = () => {
   };
 
   const handleLogout = () => {
-    logout();
+    // Cerrar menús primero
     setIsUserMenuOpen(false);
     setIsOpen(false);
-    navigate('/');
+    
+    // Ejecutar logout
+    logout();
+    
+    // Navegar al inicio con replace para evitar que el usuario pueda volver atrás
+    navigate('/', { replace: true });
+    
+    // Alternativa: usar window.location si persiste el problema
+    // window.location.href = '/';
   };
 
   const navigateToDashboard = () => {

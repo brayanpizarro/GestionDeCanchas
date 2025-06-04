@@ -851,7 +851,7 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}      <div className="bg-blue-700 text-white">
+      <div className="bg-[#0A1838] py-3 px-4 shadow-md text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <h1 className="text-xl font-semibold">Panel Administrativo - Canchas de Padel</h1>
@@ -861,7 +861,7 @@ function AdminDashboard() {
                 className="flex items-center space-x-3 focus:outline-none"
               >
                 <span className="text-sm font-medium">{currentUser?.name || 'Usuario'}</span>
-                <div className="w-8 h-8 bg-white text-blue-700 rounded-full flex items-center justify-center font-semibold">
+                <div className="w-8 h-8 bg-white text-blue-500 rounded-full flex items-center justify-center font-semibold">
                   {currentUser?.name?.[0]?.toUpperCase() || 'U'}
                 </div>
               </button>
@@ -886,7 +886,7 @@ function AdminDashboard() {
                       onClick={() => {
                         localStorage.removeItem('token');
                         localStorage.removeItem('user');
-                        window.location.href = '/login';
+                        window.location.href = '/';
                       }}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                     >
@@ -901,9 +901,9 @@ function AdminDashboard() {
       </div>
 
       {/* Navigation */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200  shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 items-center">
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`flex items-center px-3 py-4 text-sm font-medium border-b-2 ${
@@ -952,7 +952,7 @@ function AdminDashboard() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (

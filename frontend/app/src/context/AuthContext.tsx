@@ -170,7 +170,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-// Hook personalizado para usar el contexto
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
