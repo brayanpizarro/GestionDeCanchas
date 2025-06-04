@@ -1,9 +1,16 @@
+export interface PlayerDto {
+    firstName: string;
+    lastName: string;
+    rut: string;
+    age: number;
+}
 
 export interface CreateReservationDto {
     courtId: number;
     userId: number;
     startTime: string;
     endTime: string;
+    players: PlayerDto[];
 }
 
 export interface TimeSlot {
@@ -27,16 +34,10 @@ export interface Reservation {
         name: string;
         email: string;
     };
+    players: PlayerDto[];
 }
 
 const API_URL = 'http://localhost:3001/api/v1';
-
-export interface CreateReservationDTO {
-    courtId: number;
-    userId: number;
-    startTime: string;
-    endTime: string;
-}
 
 class ReservationService {
     private getAuthHeaders(): HeadersInit {
@@ -61,15 +62,43 @@ class ReservationService {
             );
         }
         return response.json();
-    }
+    }    async createReservation(data: CreateReservationDto): Promise<Reservation> {
+        // Validate data before sending
+        if (!data.courtId || !data.userId || !data.startTime || !data.endTime || !Array.isArray(data.players)) {
+            throw new Error('Missing required fields');
+        }
 
-    async createReservation(data: CreateReservationDTO): Promise<Reservation> {
+        // Ensure players array is properly formatted
+        const formattedData = {
+            ...data,
+            courtId: Number(data.courtId),
+            userId: Number(data.userId),
+            startTime: new Date(data.startTime).toISOString(),
+            endTime: new Date(data.endTime).toISOString(),
+            players: data.players.map(p => ({
+                firstName: String(p.firstName).trim(),
+                lastName: String(p.lastName).trim(),
+                rut: String(p.rut).trim(),
+                age: Number(p.age)
+            }))
+        };
+
+        console.log('Sending reservation data:', JSON.stringify(formattedData, null, 2));
+        
         const response = await fetch(`${API_URL}/reservations`, {
             method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify(data)
+            headers: {
+                ...this.getAuthHeaders(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formattedData)
         });
-        
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('Reservation creation failed:', errorData);
+            throw new Error(errorData.message || `HTTP Error: ${response.status} ${response.statusText}`);
+        }
         return this.handleResponse<Reservation>(response);
     }
 

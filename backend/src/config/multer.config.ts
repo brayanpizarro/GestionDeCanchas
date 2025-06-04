@@ -1,12 +1,13 @@
-import { extname } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
-import { v4 as uuid } from 'uuid';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
+import { Request } from 'express';
+
+const validMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
 
 export const multerConfig = {
   storage: diskStorage({
-    destination: (req, file, cb) => {
+    destination: (_req: Request, _file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
       const uploadPath = './uploads';
       // Create folder if doesn't exist
       if (!existsSync(uploadPath)) {
@@ -14,17 +15,17 @@ export const multerConfig = {
       }
       cb(null, uploadPath);
     },
-    filename: (req, file, cb) => {
+    filename: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
       // Generate unique filename
-      const uniqueFilename = `${uuid()}${extname(file.originalname)}`;
-      cb(null, uniqueFilename);
+      const filename = `${uuidv4()}-${file.originalname}`;
+      cb(null, filename);
     },
   }),
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
+    if (validMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new HttpException('Formato de archivo no soportado', HttpStatus.BAD_REQUEST), false);
+      cb(new Error('Invalid file type, only PNG and JPG are allowed'), false);
     }
   },
   limits: {

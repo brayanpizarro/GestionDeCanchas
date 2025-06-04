@@ -68,14 +68,13 @@ const ReservationPage: React.FC = () => {
                 
                 // Cargar canchas desde la API
                 const courtsResponse = await fetch('http://localhost:3001/api/v1/courts');
-                if (courtsResponse.ok) {
-                    const courtsData = await courtsResponse.json();
-                    setCourts(courtsData.map((court: any) => ({
+                if (courtsResponse.ok) {                    const courtsData = await courtsResponse.json();
+                    setCourts(courtsData.map((court: { id: number; name: string; description?: string; pricePerHour: number; status: string; capacity: number }) => ({
                         id: court.id,
                         name: court.name,
                         description: court.description || "",
                         price: parseFloat(court.pricePerHour),
-                        imageUrl: "", // Añade imagen por defecto
+                        imagePath: court.imagePath, // Añade imagen por defecto
                         available: court.status === "available",
                         maxPlayers: court.capacity
                     })));
@@ -318,14 +317,18 @@ const ReservationPage: React.FC = () => {
             
             const endTime = selectedTimeSlot.endTime instanceof Date 
                 ? selectedTimeSlot.endTime 
-                : new Date(selectedTimeSlot.endTime);
-
+                : new Date(selectedTimeSlot.endTime);            // Prepare reservation data with properly formatted player data
             const reservationData: CreateReservationDto = {
-                courtId: selectedCourt,  // Ya es number, no necesita toString()
+                courtId: selectedCourt,
                 userId: user.id,
                 startTime: startTime.toISOString(),
                 endTime: endTime.toISOString(),
-                players: players
+                players: players.map(p => ({
+                    firstName: p.firstName,
+                    lastName: p.lastName,
+                    rut: p.rut,
+                    age: p.age
+                }))
             };
 
             const reservation = await reservationService.createReservation(reservationData);

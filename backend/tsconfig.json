@@ -1,5 +1,4 @@
-{
-  "compilerOptions": {
+{  "compilerOptions": {
     "module": "commonjs",
     "declaration": true,
     "removeComments": true,
@@ -8,7 +7,8 @@
     "esModuleInterop": true,
     "strictPropertyInitialization": false,
     "moduleResolution": "node",
-    "target": "ES2023",
+    "target": "es2022",
+    "lib": ["es2022"],
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./src",
