@@ -6,7 +6,11 @@ import {
     Param,
     Put,
     Delete,
+    UseInterceptors,
+    UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerConfig } from '../config/multer.config';
 import { CourtsService } from './courts.service';
 import { CreateCourtDto } from './dto/create-court.dto';
 import { UpdateCourtDto } from './dto/update-court.dto';
@@ -16,7 +20,11 @@ export class CourtsController {
     constructor(private readonly courtsService: CourtsService) {}
 
     @Post()
-    create(@Body() createCourtDto: CreateCourtDto) {
+    @UseInterceptors(FileInterceptor('image', multerConfig))
+    create(@Body() createCourtDto: CreateCourtDto, @UploadedFile() file: Express.Multer.File) {
+        if (file) {
+            createCourtDto['imagePath'] = file.path.replace(/\\/g, '/');
+        }
         return this.courtsService.create(createCourtDto);
     }
 
@@ -31,7 +39,11 @@ export class CourtsController {
     }
 
     @Put(':id')
-    update(@Param('id') id: string, @Body() updateCourtDto: UpdateCourtDto) {
+    @UseInterceptors(FileInterceptor('image', multerConfig))
+    update(@Param('id') id: string, @Body() updateCourtDto: UpdateCourtDto, @UploadedFile() file: Express.Multer.File) {
+        if (file) {
+            updateCourtDto['imagePath'] = file.path.replace(/\\/g, '/');
+        }
         return this.courtsService.update(+id, updateCourtDto);
     }
 

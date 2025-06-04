@@ -7,6 +7,7 @@ import { reservationService, TimeSlot } from '../service/reservationService';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { CreateReservationDto } from '../service/reservationService.ts';
+import { productService } from '../service/productService';
 
 interface Court {
     id: number;
@@ -79,14 +80,19 @@ const ReservationPage: React.FC = () => {
                         maxPlayers: court.capacity
                     })));
                 }
-                
-                // Cargar equipamiento desde la API
-                const equipmentResponse = await fetch('http://localhost:3001/api/v1/equipment');
-                if (equipmentResponse.ok) {
-                    const equipmentData = await equipmentResponse.json();
-                    setEquipment(equipmentData);
-                } else {
-                    toast.error('Error al cargar el equipamiento');
+                  // Cargar productos desde la API
+                try {
+                    const products = await productService.getAllProducts();
+                    setEquipment(products.map(product => ({
+                        id: product.id.toString(),
+                        name: product.name,
+                        description: product.description,
+                        price: product.price,
+                        available: product.available,
+                        imageUrl: product.imageUrl
+                    })));
+                } catch (error) {
+                    toast.error('Error al cargar los productos');
                 }
                 
             } catch (error) {

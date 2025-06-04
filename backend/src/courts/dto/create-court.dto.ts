@@ -8,10 +8,9 @@ export class CreateCourtDto {
   @IsNotEmpty()
   @IsEnum(['covered', 'uncovered'])
   type: string;
-
   @IsOptional()
   @IsString()
-  image?: string;
+  imagePath?: string;
 
   @IsInt()
   @Min(2)

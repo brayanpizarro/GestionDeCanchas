@@ -30,6 +30,9 @@ export class Court {
     @Column({ type: 'decimal', precision: 3, scale: 2, default: 4.5 })
     rating: number;
 
+    @Column({ nullable: true })
+    imagePath: string;
+
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     createdAt: Date;
 

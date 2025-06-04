@@ -77,8 +77,7 @@ export interface Reservation {
 // Admin email constant
 export const ADMIN_CREDENTIALS = {email : 'administradorucn@gmail.com', password: 'Admin2025:)'};
 
-class DashboardService {
-    private getAuthHeaders() {
+class DashboardService {    private getAuthHeaders() {
         return {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             'Content-Type': 'application/json'
@@ -110,25 +109,37 @@ class DashboardService {
             const response = await fetch(`${API_URL}/courts`, {
                 headers: this.getAuthHeaders()
             });
-            return this.handleResponse<Court[]>(response);
+            const courts = await this.handleResponse<any[]>(response);
+            
+            return courts.map(court => ({
+                id: court.id,
+                name: court.name,
+                type: court.type || 'uncovered',
+                status: court.status,
+                capacity: court.capacity,
+                pricePerHour: Number(court.pricePerHour),
+                image: court.image || '/api/placeholder/400/300',
+                lastMaintenance: court.updatedAt,
+                reservations: 0 // Este dato se podría actualizar con datos reales más adelante
+            }));
         } catch (error) {
             console.error('Error fetching courts:', error);
             throw error;
         }
-    }
-
-    async createCourt(courtData: Omit<Court, 'id' | 'rating' | 'reservasHoy'>): Promise<Court> {
+    }    async createCourt(courtData: FormData): Promise<Court> {
     try {
         const response = await fetch(`${API_URL}/courts`, {
             method: 'POST',
-            headers: this.getAuthHeaders(),
-            body: JSON.stringify(courtData) // Ya incluye pricePerHour
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+            body: courtData
         });
         return this.handleResponse<Court>(response);
-    }   catch (error) {
-            console.error('Error creating court:', error);
-            throw error;
-        }
+    } catch (error) {
+        console.error('Error creating court:', error);
+        throw error;
+    }
     }
 
     async updateCourt(id: number, courtData: Partial<Court>): Promise<Court> {

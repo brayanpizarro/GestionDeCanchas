@@ -4,24 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="090e0ad7-4268-4fe7-b846-fbfb24ab1492" name="Changes" comment="Integrate court selection with backend and available time slots functionality. Update dependencies accordingly.">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/dashboard.controller.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/dashboard.controller.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/dashboard.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/dashboard.module.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/dashboard.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/dashboard.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/dashboard/types/dashboard.types.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/dashboard/types/dashboard.types.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/reservations/dto/create-reservation.dto.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/dto/create-reservation.dto.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/reservations/entities/reservation.entity.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/entities/reservation.entity.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/reservations/reservations.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/reservations.module.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/reservations/reservations.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/reservations.service.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/context/AuthContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/context/AuthContext.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/pages/ReservationPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/pages/ReservationPage.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/authService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/authService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/dashboardService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/dashboardService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/profileService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/profileService.ts" afterDir="false" />
-    </list>
+    <list default="true" id="090e0ad7-4268-4fe7-b846-fbfb24ab1492" name="Changes" comment="Refactor dashboard types, optimize imports, and integrate player entity. Add admin creation script and enhance reservation functionality with player management. Update CORS, global settings and improve logging." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -141,6 +124,7 @@
       <workItem from="1748878836263" duration="239000" />
       <workItem from="1748905015684" duration="148000" />
       <workItem from="1748905209220" duration="7795000" />
+      <workItem from="1748924196954" duration="167000" />
     </task>
     <task id="LOCAL-00001" summary="Initialize frontend project with main app structure and components&#10;&#10;Set up a Vite React TypeScript project for &quot;Canchas UCENIN&quot; featuring key components such as Navbar, Hero, Features, and Footer. Added styling with TailwindCSS, implemented smooth scrolling, and included utility components like Button and Input. Configuration files and Git ignore settings were also established.">
       <option name="closed" value="true" />
@@ -198,7 +182,15 @@
       <option name="project" value="LOCAL" />
       <updated>1746545144531</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Refactor dashboard types, optimize imports, and integrate player entity. Add admin creation script and enhance reservation functionality with player management. Update CORS, global settings and improve logging.">
+      <option name="closed" value="true" />
+      <created>1748924302864</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1748924302864</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -213,6 +205,8 @@
     <MESSAGE value="Refactor UI components and update project structure&#10;&#10;Removed unused components (Button, Input, Label, LoginForm) and utility functions for a cleaner codebase. Enhanced `Navbar` with router-based navigation and responsive design. Improved `index.html` and CSS for better styling, localization, and performance." />
     <MESSAGE value="Add authentication logic and enhance Navbar functionality&#10;&#10;Refactored Navbar to display authenticated user details and provide navigation for login/logout. Enhanced AuthForms with validation, login/register functionality, error handling, and a tab-based UI. Adjusted AuthPage and Docker command for smoother experience." />
     <MESSAGE value="Add authentication improvements and responsive Navbar&#10;&#10;Enhanced user authentication by adding comprehensive login and registration validation. Updated the Navbar to include user-specific options and a responsive design for desktop and mobile views based on the authentication state." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add authentication improvements and responsive Navbar&#10;&#10;Enhanced user authentication by adding comprehensive login and registration validation. Updated the Navbar to include user-specific options and a responsive design for desktop and mobile views based on the authentication state." />
+    <MESSAGE value="Integrate court selection with backend and available time slots functionality. Update dependencies accordingly." />
+    <MESSAGE value="Refactor dashboard types, optimize imports, and integrate player entity. Add admin creation script and enhance reservation functionality with player management. Update CORS, global settings and improve logging." />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactor dashboard types, optimize imports, and integrate player entity. Add admin creation script and enhance reservation functionality with player management. Update CORS, global settings and improve logging." />
   </component>
 </project>

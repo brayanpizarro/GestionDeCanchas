@@ -8,6 +8,9 @@ export class Product {
     @Column()
     name: string;
 
+    @Column({ type: 'text', nullable: true })
+    description: string;
+
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     price: number;
 
@@ -16,6 +19,10 @@ export class Product {
 
     @Column()
     category: string;
+
+    @Column({ default: true })
+    available: boolean;    @Column({ nullable: true })
+    imagePath: string;
 
     @Column({ nullable: true })
     previousStock: number;

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
+import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -9,6 +10,9 @@ async function bootstrap() {
   // Configurar límites de payload para archivos grandes
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  
+  // Servir archivos estáticos desde el directorio de uploads
+  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
   
   // Configurar CORS
   app.enableCors({
@@ -38,6 +42,6 @@ async function bootstrap() {
 }
 
 bootstrap().catch((error) => {
-  console.error('Error iniciating app:', error);
+  console.error('Error iniciando la aplicación:', error);
   process.exit(1);
 });
