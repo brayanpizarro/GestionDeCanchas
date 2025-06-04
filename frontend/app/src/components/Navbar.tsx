@@ -40,8 +40,8 @@ const Navbar: React.FC = () => {
     } else if(user?.role === 'user') {
       navigate('/profile'); // Navegar al panel de usuario si es usuario 
     }
-    setIsOpen(false);
-    setIsUserMenuOpen(false);
+    setIsOpen(false);// Cerrar el menú móvil si está abierto
+    setIsUserMenuOpen(false);// Cerrar el menú de usuario si está abierto
   };
 
   return (

@@ -7,6 +7,7 @@ import { CourtsModule } from './courts/courts.module';
 import { ReservationsModule } from './reservations/reservations.module';
 import { ProductsModule } from "./products/products.module";
 import { DashboardModule } from './dashboard/dashboard.module';
+import { CardModule } from './card/card.module';
 
 
 @Module({  imports: [
@@ -26,6 +27,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     CourtsModule,    ProductsModule,
     ReservationsModule,
     DashboardModule,
+    CardModule,
   ],
   controllers: [],
   providers: [],

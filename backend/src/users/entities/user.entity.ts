@@ -9,6 +9,7 @@ import {
   } from 'typeorm';
 import { UserRole } from './user-role.enum';
 import { Reservation } from '../../reservations/entities/reservation.entity';
+import { Card } from 'card/entities/card.entity';
 
 
 
@@ -50,4 +51,10 @@ import { Reservation } from '../../reservations/entities/reservation.entity';
 
     @OneToMany(() => Reservation, reservation => reservation.user)
     reservations: Reservation[];
+
+    @Column({ type: 'float', default: 0 })
+    balance: number;
+    
+    @OneToMany(() => Card, card => card.user)
+    cards: Card[];
   }
