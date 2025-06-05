@@ -9,7 +9,7 @@ import { User } from '../users/entities/user.entity';
 @Controller('auth')
 export class AuthController {
     constructor(
-        private readonly authService:AuthService ){    }    @Post('register')
+        private readonly authService:AuthService ){}    @Post('register')
     async register(@Body() registerDto: RegisterDto): Promise<User> {
         return this.authService.register(registerDto);
     }    @Post('login')

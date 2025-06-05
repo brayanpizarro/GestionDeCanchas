@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
-
 import * as bcryptjs from 'bcryptjs'; // Importar bcrypt para encriptar contraseñas
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -46,10 +45,11 @@ export class AuthService {
                 role: user.role
             };
 
-            const token = await this.jwtService.sign(payload);
+            const token = this.jwtService.sign(payload);
 
             // Remove password from response
             const { password, ...userWithoutPassword } = user;
+
 
             return {
                 token,
