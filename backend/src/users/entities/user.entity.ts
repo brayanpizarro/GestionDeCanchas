@@ -9,7 +9,7 @@ import {
   } from 'typeorm';
 import { UserRole } from './user-role.enum';
 import { Reservation } from '../../reservations/entities/reservation.entity';
-import { Card } from 'card/entities/card.entity';
+import { Card } from '../../card/entities/card.entity';
 
 
 

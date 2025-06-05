@@ -1,10 +1,16 @@
 const API_URL = 'http://localhost:3001/api/v1/auth';
 
-export const getUserCards = async (token: string) => {
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('authToken');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    };
+};
+
+export const getUserCards = async () => {
     const res = await fetch(`${API_URL}/user/cards`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
+        headers: getAuthHeaders()
     });
 
     const data = await res.json();
@@ -12,13 +18,10 @@ export const getUserCards = async (token: string) => {
     return data;
 };
 
-export const addUserCard = async (token: string, cardData: any) => {
+export const addUserCard = async (cardData: any) => {
     const res = await fetch(`${API_URL}/user/cards`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(cardData)
     });
 
@@ -27,13 +30,10 @@ export const addUserCard = async (token: string, cardData: any) => {
     return data;
 };
 
-export const topUpBalance = async (token: string, amount: number, cardId: string) => {
+export const topUpBalance = async (amount: number, cardId: string) => {
     const res = await fetch(`${API_URL}/user/topup`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ amount, cardId })
     });
 
@@ -42,11 +42,9 @@ export const topUpBalance = async (token: string, amount: number, cardId: string
     return data;
 };
 
-export const getUserReservations = async (token: string) => {
+export const getUserReservations = async () => {
     const res = await fetch(`${API_URL}/reservations`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
+        headers: getAuthHeaders()
     });
 
     const data = await res.json();

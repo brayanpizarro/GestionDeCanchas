@@ -1,24 +1,32 @@
-# Dockerfile para el backend NestJS + TypeORM
-FROM node:18
+# Dockerfile para desarrollo
+FROM node:18-alpine
+
+# Instalar herramientas necesarias
+RUN apk add --no-cache postgresql-client netcat-openbsd
 
 # Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar archivos de configuración
+# Copiar archivos de dependencias
 COPY package*.json ./
-COPY tsconfig*.json ./
 
-# Instalar dependencias
+# Instalar TODAS las dependencias (incluyendo devDependencies)
 RUN npm install
 
-# Copiar todo el código fuente
+# Copiar código fuente
 COPY . .
 
-# Compilar TypeScript
-RUN npm run build
+# Crear directorio para uploads
+RUN mkdir -p uploads
 
-# Exponer el puerto del backend
+#  Exponer puerto
 EXPOSE 3001
 
-# Comando para iniciar la app (modo desarrollo)
-CMD ["npm", "run", "start:dev"]
+#  Compilar la aplicación
+RUN npm run build
+
+
+CMD ["node", "dist/main.js"]
+
+
+# CMD ["npm", "run", "start:prod"]

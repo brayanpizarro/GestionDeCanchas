@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../users/users.service';
+import { UsersService } from 'src/users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import * as bcryptjs from 'bcryptjs'; // Importar bcrypt para encriptar contraseñas
 import { LoginDto } from './dto/login.dto';
@@ -25,41 +25,23 @@ export class AuthService {
             password: passwordHash, // reemplazar la contraseña por la encriptada
           };
         return await this.usersService.create(newUser); // Llama al servicio de usuarios para crear un nuevo usuario
-    }    async login(loginDto: LoginDto) {
-        try {
-            console.log('Login attempt for email:', loginDto.email);
-            const user = await this.usersService.findOneByEmail(loginDto.email.toLowerCase());
-            if (!user) {
-                console.log('User not found for email:', loginDto.email);
-                throw new UnauthorizedException('Invalid credentials');
-            }
-
-            const isPasswordValid = await bcryptjs.compare(loginDto.password, user.password);
-            if (!isPasswordValid) {
-                throw new UnauthorizedException('Invalid credentials');
-            }
-
-            const payload = { 
-                email: user.email,
-                sub: user.id,
-                role: user.role
-            };
-
-            const token = this.jwtService.sign(payload);
-
-            // Remove password from response
-            const { password, ...userWithoutPassword } = user;
-
-
-            return {
-                token,
-                user: userWithoutPassword
-            };
-        } catch (error) {
-            if (error instanceof UnauthorizedException) {
-                throw error;
-            }
-            throw new BadRequestException('An error occurred during login');
+    }
+    async login(loginDto:LoginDto){ // Método para iniciar sesión
+        const user= await this.usersService.findOneByEmail(loginDto.email);
+        if(!user) { // Si el usuario no existe
+            throw new UnauthorizedException('email not found'); // Lanzar un error
         }
+        const isPassword = await bcryptjs.compare(loginDto.password, user.password); // Comparar la contraseña
+        if(!isPassword) { // Si la contraseña no coincide
+            throw new UnauthorizedException('password not found'); // Lanzar un error
+        }
+        const payload = {email:user.email}; // Email del usuario
+
+        const token = this.jwtService.sign(payload); // Firmar el token
+
+        return {
+            token,
+            user ,
+        };
     }
 }
