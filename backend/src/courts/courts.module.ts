@@ -5,7 +5,7 @@ import { CourtsController } from './courts.controller';
 import { CourtsService } from './courts.service';
 import { Court } from './entities/court.entity';
 import {UsersModule} from "../users/users.module";
-import { Reservation } from '@reservations/entities/reservation.entity';
+import { Reservation } from '../reservations/entities/reservation.entity';
 
 @Module({
     imports: [TypeOrmModule.forFeature([Court,Reservation]),UsersModule],

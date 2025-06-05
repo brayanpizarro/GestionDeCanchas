@@ -39,9 +39,8 @@ export interface Reservation {
 
 const API_URL = 'http://localhost:3001/api/v1';
 
-class ReservationService {
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('token');
+class ReservationService {    private getAuthHeaders(): HeadersInit {
+        const token = localStorage.getItem('authToken');
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
         };

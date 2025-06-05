@@ -9,7 +9,7 @@ const API_BASE_URL = 'http://localhost:3001/api/v1';
 
 // Helper to get auth token
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('authToken');
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`
@@ -882,9 +882,8 @@ function AdminDashboard() {
                     >
                       Cambiar Contraseña
                     </button>
-                    <button
-                      onClick={() => {
-                        localStorage.removeItem('token');
+                    <button                      onClick={() => {
+                        localStorage.removeItem('authToken');
                         localStorage.removeItem('user');
                         window.location.href = '/';
                       }}

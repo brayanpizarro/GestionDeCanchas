@@ -56,55 +56,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Función para hacer signIn con mejor manejo de errores
+  // Función para hacer signIn 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Intentando conectar con:', 'http://localhost:3001/api/v1/auth/login');
-      
-      // Agregar timeout para evitar esperas infinitas
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout      console.log('Login attempt with:', { email, password: '***' });
-      const response = await fetch('http://localhost:3001/api/v1/auth/login', {
+      // Hacer la petición de login al servidor
+      const response = await fetch('http://localhost:3001/api/v1/auth/login', { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: email.trim(), password }),
-        signal: controller.signal,
+        body: JSON.stringify({ email, password }),
       });
-
-      clearTimeout(timeoutId);
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+        throw new Error(errorData.message || 'Error al iniciar sesión');
       }
 
       const data = await response.json();
-      console.log('Login response data:', data);
       
-      // Validar que la respuesta tenga la estructura esperada
-      if (!data.user || !data.token) {
-        throw new Error('Respuesta del servidor inválida: faltan datos de usuario o token');
-      }
-        // Si el login es exitoso, usar la función login para guardar los datos
+      // Si el login es exitoso, usar la función login para guardar los datos
       login(data.user, data.token);
       
-      // Devolver los datos para que podamos usarlos en el componente
-      return data;} catch (error) {
+    } catch (error) {
       console.error('Error en signIn:', error);
-      
-      // Proporcionar mensajes de error más específicos
-      if (error.name === 'AbortError') {
-        throw new Error('Tiempo de espera agotado. Verifica que el servidor esté ejecutándose.');
-      } else if (error.message.includes('Failed to fetch')) {
-        throw new Error('No se puede conectar al servidor. Verifica que esté ejecutándose en http://localhost:3001');
-      } else {
-        throw error;
-      }
+      throw error; // Re-lanzar el error para que lo maneje el componente
     }
   };
 
@@ -160,7 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isAuthenticated,
         loading,
         login,
-        signIn,
+        signIn, // Agregamos signIn al valor del contexto
         logout,
         updateUser,
       }}
@@ -170,7 +146,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-
+// Hook personalizado para usar el contexto
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
