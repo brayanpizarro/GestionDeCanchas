@@ -4,7 +4,7 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    role: 'user' | 'admin' ;
+    role: 'user' | 'admin' | 'premium';
     status: 'active' | 'suspended' | 'inactive';
     phone: string;
     joinDate: string;
@@ -16,14 +16,14 @@ export interface CreateUserData {
     name: string;
     email: string;
     password: string;
-    role?: 'user' | 'admin';
+    role?: 'user' | 'admin' | 'premium';
     phone?: string;
 }
 
 export interface UpdateUserData {
     name?: string;
     email?: string;
-    role?: 'user' | 'admin';
+    role?: 'user' | 'admin' | 'premium';
     status?: 'active' | 'suspended' | 'inactive';
     phone?: string;
 }
@@ -46,7 +46,7 @@ export interface ChangePasswordData {
 class UserService {
     private getAuthHeaders() {
         return {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'application/json'
         };
     }
@@ -150,24 +150,6 @@ class UserService {
         }
     }
 
-    async register(userData: CreateUserData): Promise<LoginResponse> {
-        try {
-            const response = await fetch(`${API_URL}/auth/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userData)
-            });
-            const data = await this.handleResponse<LoginResponse>(response);
-            localStorage.setItem('authToken', data.token);
-            return data;
-        } catch (error) {
-            console.error('Error during registration:', error);
-            throw error;
-        }
-    }
-
     async login(loginData: LoginData): Promise<LoginResponse> {
         try {
             const response = await fetch(`${API_URL}/auth/login`, {
@@ -178,10 +160,28 @@ class UserService {
                 body: JSON.stringify(loginData)
             });
             const data = await this.handleResponse<LoginResponse>(response);
-            localStorage.setItem('authToken', data.token);
+            localStorage.setItem('token', data.token);
             return data;
         } catch (error) {
             console.error('Error during login:', error);
+            throw error;
+        }
+    }
+
+    async register(userData: CreateUserData): Promise<LoginResponse> {
+        try {
+            const response = await fetch(`${API_URL}/auth/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            });
+            const data = await this.handleResponse<LoginResponse>(response);
+            localStorage.setItem('token', data.token);
+            return data;
+        } catch (error) {
+            console.error('Error during registration:', error);
             throw error;
         }
     }
@@ -201,11 +201,11 @@ class UserService {
     }
 
     logout(): void {
-        localStorage.removeItem('authToken');
+        localStorage.removeItem('token');
     }
 
     isAuthenticated(): boolean {
-        return !!localStorage.getItem('authToken');
+        return !!localStorage.getItem('token');
     }
 }
 

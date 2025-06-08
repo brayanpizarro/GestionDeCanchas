@@ -1,22 +1,29 @@
-import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { UsersModule } from '../users/users.module';
-import { JwtModule } from '@nestjs/jwt';
-import { jwtConstanst } from './constants/jwt.constants'; // Importar constantes de JWT
-import { JwtStrategy } from './strategy/jwt.strategy';
+import { Module } from "@nestjs/common"
+import { TypeOrmModule } from "@nestjs/typeorm"
+import { ForgotPasswordController } from "../auth/forgot-password.controller"
+import { ForgotPasswordService } from "./services/forgot-password.service"
+import { EmailService } from "./services/email.service"
+import { PasswordReset } from "../auth/entities/password-reset.entities"
+import { User } from "../users/entities/user.entity"
+import { UsersModule } from "../users/users.module"
+import { JwtModule } from "@nestjs/jwt"
+import { jwtConstanst } from "./constants/jwt.constants"
+import { AuthController } from "./auth.controller"
+import { AuthService } from "./auth.service"
+import { JwtStrategy } from "./strategy/jwt.strategy"
 
 @Module({
   imports: [
     UsersModule,
+    TypeOrmModule.forFeature([PasswordReset, User]),
     JwtModule.register({
-      global: true, // Hacer que el módulo JWT esté disponible en toda la aplicación  
-      secret: jwtConstanst.secret,// Clave secreta para firmar el token  
-      signOptions: { expiresIn: '1d' }, // Opciones de firma del token (tiempo de expiración)
-    })
-  ], // Importar el servicio de usuarios
-  controllers: [AuthController], // Controlador de autenticación
-  providers: [AuthService,JwtStrategy], // Servicio de autenticación
-  exports: [AuthService, JwtModule], // Exportar el servicio de autenticación y el módulo JWT
+      global: true,
+      secret: jwtConstanst.secret,
+      signOptions: { expiresIn: "1d" },
+    }),
+  ],
+  controllers: [AuthController, ForgotPasswordController],
+  providers: [AuthService, JwtStrategy, ForgotPasswordService, EmailService],
+  exports: [AuthService, JwtModule, ForgotPasswordService, EmailService],
 })
 export class AuthModule {}
