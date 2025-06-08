@@ -16,7 +16,7 @@ async function bootstrap() {
   
   // Configurar CORS
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:5173'], // Agrega tu puerto de frontend
+    origin: ['http://localhost:3001', 'http://localhost:5173'], // Agrega tu puerto de frontend
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -35,7 +35,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
   
   const port = process.env.PORT || 3001;
-  await app.listen(port);
+  await app.listen(port,'0.0.0.0');
   
   console.log(`🚀 Servidor corriendo en http://localhost:${port}`);
   console.log(`📚 API disponible en http://localhost:${port}/api/v1`);
