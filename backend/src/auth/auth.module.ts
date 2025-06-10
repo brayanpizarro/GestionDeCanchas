@@ -3,7 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm"
 import { ForgotPasswordController } from "../auth/forgot-password.controller"
 import { ForgotPasswordService } from "./services/forgot-password.service"
 import { EmailService } from "./services/email.service"
-import { PasswordReset } from "../auth/entities/password-reset.entities"
+import { PasswordResetToken } from "./entities/password-reset.entities"
 import { User } from "../users/entities/user.entity"
 import { UsersModule } from "../users/users.module"
 import { JwtModule } from "@nestjs/jwt"
@@ -15,7 +15,7 @@ import { JwtStrategy } from "./strategy/jwt.strategy"
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([PasswordReset, User]),
+    TypeOrmModule.forFeature([PasswordResetToken, User]),
     JwtModule.register({
       global: true,
       secret: jwtConstanst.secret,

@@ -1,34 +1,29 @@
-services:
-  backend:
-    build: .
-    container_name: nest_backend
-    ports:
-      - "3001:3001"
-    depends_on:
-      - postgres
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      DB_NAME: dbingeso
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run start:dev  # usa start:dev si tienes hot reload configurado
+version: '3.8'
 
+services:
   postgres:
-    image: postgres:15
-    container_name: postgres_db
-    restart: always
+    image: postgres:15.3
+    container_name: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: dbingeso
     ports:
-      - "5433:5432"  
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    container_name: backend
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    volumes:
+      - ./uploads:/app/uploads
 
 volumes:
   postgres_data:

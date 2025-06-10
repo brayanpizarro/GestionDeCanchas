@@ -14,15 +14,14 @@ export interface ResetPasswordRequest {
   newPassword: string;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
 }
 
 class ForgotPasswordService {
-  private readonly baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001;
-
+  //private readonly baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
   private async makeRequest<T>(
     endpoint: string, 
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
@@ -34,13 +33,14 @@ class ForgotPasswordService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Para enviar cookies de sesión si es necesario
       };
 
       if (body && method !== 'GET') {
         config.body = JSON.stringify(body);
       }
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, config);
+      const response = await fetch(`/api/v1${endpoint}`, config);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -62,7 +62,7 @@ class ForgotPasswordService {
    */
   async requestPasswordReset(email: string): Promise<ApiResponse> {
     const payload: ForgotPasswordRequest = { email };
-    return this.makeRequest('/api/v1/auth/forgot-password', 'POST', payload);
+    return this.makeRequest('/auth/forgot-password', 'POST', payload);
   }
 
   /**
@@ -70,7 +70,7 @@ class ForgotPasswordService {
    */
   async verifyResetCode(email: string, code: string): Promise<ApiResponse> {
     const payload: VerifyResetCodeRequest = { email, code };
-    return this.makeRequest('/api/v1/auth/verify-reset-code', 'POST', payload);
+    return this.makeRequest('/auth/verify-reset-code', 'POST', payload);
   }
 
   /**
@@ -78,7 +78,7 @@ class ForgotPasswordService {
    */
   async resetPassword(email: string, code: string, newPassword: string): Promise<ApiResponse> {
     const payload: ResetPasswordRequest = { email, code, newPassword };
-    return this.makeRequest('/api/v1/auth/reset-password', 'POST', payload);
+    return this.makeRequest('/auth/reset-password', 'POST', payload);
   }
 
   /**

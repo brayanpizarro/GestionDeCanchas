@@ -17,6 +17,7 @@ import { Card } from '../../card/entities/card.entity';
   export class User {
     @PrimaryGeneratedColumn()
     id: number;
+
     @Column()
     name: string;
 
@@ -40,6 +41,9 @@ import { Card } from '../../card/entities/card.entity';
     })
     role: UserRole;
   
+    @Column({ type: 'varchar', length: 36, nullable: true })
+    resetToken: string | null;
+
     @CreateDateColumn()
     createdAt: Date;
   

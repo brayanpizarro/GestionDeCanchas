@@ -1,12 +1,17 @@
-import { Injectable, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
+import { User } from '@users/entities/user.entity';
 import { PasswordResetToken } from '../entities/password-reset.entities';
-import { User } from '../../users/entities/user.entity'; // Asume que tienes una entidad User
-import { EmailService } from './email.service'; // Servicio de correo
+import { Repository, LessThan } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { EmailService } from './email.service';
+import * as bcrypt from 'bcrypt';
+
+interface UpdateUserData {
+  password?: string;
+  resetToken?: string | null;
+  updatedAt?: Date;
+}
 
 @Injectable()
 export class ForgotPasswordService {
@@ -16,116 +21,114 @@ export class ForgotPasswordService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private emailService: EmailService,
-    private configService: ConfigService,
   ) {}
 
-  /**
-   * Solicitar restablecimiento de contraseña
-   */
+  private generateSixDigitCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private async cleanupExpiredTokens(): Promise<void> {
+    await this.passwordResetTokenRepository.delete({
+      expiresAt: LessThan(new Date()),
+      isUsed: false
+    });
+  }
+
   async requestPasswordReset(email: string): Promise<{ message: string }> {
-    // Verificar si el usuario existe
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
-      // Por seguridad, no revelamos si el email existe o no
+      // Retornamos el mismo mensaje aunque el usuario no exista por seguridad
       return { message: 'Si el correo existe, recibirás un código de verificación' };
     }
 
-    // Limpiar tokens previos del usuario
+    // Limpiar tokens previos
     await this.cleanupExpiredTokens();
     await this.passwordResetTokenRepository.delete({ email, isUsed: false });
 
-    // Generar código de 6 dígitos
+    // Generar nuevo token de reset
+    const resetToken = uuidv4();
     const code = this.generateSixDigitCode();
-    const token = crypto.randomBytes(32).toString('hex');
     const hashedCode = await bcrypt.hash(code, 10);
 
+    // Actualizar usuario con el nuevo reset token
+    await this.userRepository.update(
+      { id: user.id },
+      { resetToken }
+    );
+
     // Crear token de restablecimiento
-    const resetToken = this.passwordResetTokenRepository.create({
+    const passwordResetToken = this.passwordResetTokenRepository.create({
       email,
       code: hashedCode,
-      token,
+      token: resetToken,
       expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutos
+      isUsed: false,
+      createdAt: new Date()
     });
 
-    await this.passwordResetTokenRepository.save(resetToken);
-
-    // Enviar correo con el código
-    await this.emailService.sendPasswordResetCode(email, code, user.name || 'Usuario');
+    await this.passwordResetTokenRepository.save(passwordResetToken);
+    await this.emailService.sendPasswordResetCode(email, code, user.name);
 
     return { message: 'Si el correo existe, recibirás un código de verificación' };
   }
 
-  /**
-   * Verificar código de restablecimiento
-   */
-  async verifyResetCode(email: string, code: string): Promise<{ message: string; valid: boolean }> {
+  async verifyResetCode(email: string, code: string): Promise<{ isValid: boolean; message: string }> {
     const resetToken = await this.passwordResetTokenRepository.findOne({
-      where: {
+      where: { 
         email,
-        isUsed: false,
+        isUsed: false
       },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC' }
     });
 
-    if (!resetToken) {
-      throw new BadRequestException('Código inválido o expirado');
-    }
-
-    if (resetToken.expiresAt < new Date()) {
-      await this.passwordResetTokenRepository.delete({ id: resetToken.id });
-      throw new BadRequestException('El código ha expirado');
+    if (!resetToken || resetToken.expiresAt < new Date()) {
+      return { isValid: false, message: 'Código inválido o expirado' };
     }
 
     const isValidCode = await bcrypt.compare(code, resetToken.code);
-    if (!isValidCode) {
-      throw new BadRequestException('Código inválido');
-    }
-
-    return { message: 'Código verificado correctamente', valid: true };
+    return {
+      isValid: isValidCode,
+      message: isValidCode ? 'Código válido' : 'Código inválido'
+    };
   }
 
-  /**
-   * Restablecer contraseña
-   */
   async resetPassword(email: string, code: string, newPassword: string): Promise<{ message: string }> {
-    // Verificar código nuevamente
-    const resetToken = await this.passwordResetTokenRepository.findOne({
-      where: {
-        email,
-        isUsed: false,
-      },
-      order: { createdAt: 'DESC' },
-    });
-
-    if (!resetToken) {
-      throw new BadRequestException('Código inválido o expirado');
-    }
-
-    if (resetToken.expiresAt < new Date()) {
-      await this.passwordResetTokenRepository.delete({ id: resetToken.id });
-      throw new BadRequestException('El código ha expirado');
-    }
-
-    const isValidCode = await bcrypt.compare(code, resetToken.code);
-    if (!isValidCode) {
-      throw new BadRequestException('Código inválido');
-    }
-
-    // Verificar que el usuario existe
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    // Actualizar contraseña
+    const resetToken = await this.passwordResetTokenRepository.findOne({
+      where: { 
+        email,
+        isUsed: false,
+      },
+      order: { createdAt: 'DESC' }
+    });
+
+    if (!resetToken || resetToken.expiresAt < new Date()) {
+      // Limpiar token expirado del usuario
+      const updateData: UpdateUserData = {
+        resetToken: null
+      };
+      await this.userRepository.update({ id: user.id }, updateData);
+      throw new BadRequestException('Código inválido o expirado');
+    }
+
+    const isValidCode = await bcrypt.compare(code, resetToken.code);
+    if (!isValidCode) {
+      throw new BadRequestException('Código inválido');
+    }
+
+    // Actualizar contraseña y limpiar reset token
     const hashedPassword = await bcrypt.hash(newPassword, 12);
-    await this.userRepository.update(
-      { email },
-      { 
-        password: hashedPassword,
-        updatedAt: new Date(),
-      }
-    );
+    const updateData: UpdateUserData = {
+      password: hashedPassword,
+      resetToken: null,
+      updatedAt: new Date()
+    };
+
+    await this.userRepository.update({ id: user.id }, updateData);
 
     // Marcar token como usado
     await this.passwordResetTokenRepository.update(
@@ -133,25 +136,8 @@ export class ForgotPasswordService {
       { isUsed: true }
     );
 
-    // Enviar confirmación por correo
-    await this.emailService.sendPasswordResetConfirmation(email, user.name || 'Usuario');
-
+    // Enviar confirmación por email
+    await this.emailService.sendPasswordResetConfirmation(email, user.name);
     return { message: 'Contraseña actualizada correctamente' };
-  }
-
-  /**
-   * Limpiar tokens expirados
-   */
-  private async cleanupExpiredTokens(): Promise<void> {
-    await this.passwordResetTokenRepository.delete({
-      expiresAt: LessThan(new Date()),
-    });
-  }
-
-  /**
-   * Generar código de 6 dígitos
-   */
-  private generateSixDigitCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 }
