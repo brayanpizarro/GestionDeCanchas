@@ -1,8 +1,8 @@
 export declare class CreateCourtDto {
     name: string;
-    type: string;
+    type: 'covered' | 'uncovered';
     imagePath?: string;
     capacity: number;
     pricePerHour: number;
-    status: string;
+    status: 'available' | 'occupied' | 'maintenance';
 }

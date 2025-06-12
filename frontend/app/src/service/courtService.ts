@@ -1,119 +1,114 @@
-const API_URL = 'http://localhost:3001/api/v1';
+import { API_BASE_URL, getAuthHeaders, getAuthHeadersForFormData } from "./api"
+import type { Court, CreateCourtFormData } from "../types"
+import type { Court as ReservationCourt} from "../types/reservation"
 
-export interface Court {
-    id: number;
-    name: string;
-    type: 'covered' | 'uncovered';
-    capacity: number;
-    pricePerHour: number;
-    status: 'available' | 'occupied' | 'maintenance';
-    imagePath?: string;
+export class CourtService {
+  static async getCourts(): Promise<Court[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/courts`, {
+        headers: getAuthHeaders(),
+      })
+      if (!response.ok) {
+        const error = await response.text()
+        console.error("Error response:", error)
+        throw new Error("Error fetching courts")
+      }
+      const courtsData = await response.json()
+      return courtsData.map((court: any) => ({
+        id: court.id,
+        name: court.name,
+        type: court.type,
+        status: court.status,
+        capacity: court.capacity,
+        pricePerHour: Number.parseFloat(court.pricePerHour),
+        image: court.imagePath || court.image,
+        createdAt: court.createdAt,
+        updatedAt: court.updatedAt,
+      }))
+    } catch (error) {
+      console.error("Error in getCourts:", error)
+      throw error
+    }
+  }
+
+  static async getAllCourts(): Promise<ReservationCourt[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/courts`)
+
+      if (!response.ok) {
+        throw new Error("Error fetching courts")
+      }
+
+      const courtsData = await response.json()
+      return courtsData.map((court: any) => ({
+        id: court.id,
+        name: court.name,
+        description: court.description || "",
+        price: Number.parseFloat(court.pricePerHour || court.price),
+        imageUrl: court.imagePath || court.imageUrl,
+        imagePath: court.imagePath,
+        available: court.status === "available",
+        maxPlayers: court.capacity || court.maxPlayers,
+        capacity: court.capacity,
+        pricePerHour: court.pricePerHour,
+        status: court.status,
+      }))
+    } catch (error) {
+      console.error("Error fetching courts:", error)
+      throw error
+    }
+  }
+
+  static async createCourt(courtData: CreateCourtFormData): Promise<Court> {
+    const formData = new FormData()
+    formData.append("name", courtData.name)
+    formData.append("type", courtData.type)
+    formData.append("status", courtData.status)
+    formData.append("capacity", String(Number(courtData.capacity)))
+    formData.append("pricePerHour", String(Number(courtData.pricePerHour)))
+
+    if (courtData.imageFile) {
+      formData.append("image", courtData.imageFile)
+    }
+
+    const response = await fetch(`${API_BASE_URL}/courts`, {
+      method: "POST",
+      headers: getAuthHeadersForFormData(),
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || "Error creating court")
+    }
+
+    return response.json()
+  }
+
+  static async updateCourtStatus(courtId: string, status: "available" | "occupied" | "maintenance"): Promise<Court> {
+    const response = await fetch(`${API_BASE_URL}/courts/${courtId}/status`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status }),
+    })
+
+    if (!response.ok) throw new Error("Error updating court status")
+    return response.json()
+  }
+
+  static async getCourtUsage() {
+    const response = await fetch(`${API_BASE_URL}/courts/usage/stats`, {
+      headers: getAuthHeaders(),
+    })
+    if (!response.ok) throw new Error("Error fetching court usage stats")
+    return response.json()
+  }
 }
 
-export interface CreateCourtData {
-    name: string;
-    type: 'covered' | 'uncovered';
-    capacity: number;
-    pricePerHour: number;
-    status: 'available' | 'occupied' | 'maintenance';
-    image?: File;
+export const courtService = {
+  getAllCourts: CourtService.getAllCourts,
+  getCourts: CourtService.getCourts,
+  createCourt: CourtService.createCourt,
+  updateCourtStatus: CourtService.updateCourtStatus,
+  getCourtUsage: CourtService.getCourtUsage,
 }
-
-class CourtService {
-    private getAuthHeaders() {
-        return {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-        };
-    }
-
-    private async handleResponse<T>(response: Response): Promise<T> {
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(error || 'Error en la solicitud');
-        }
-        return response.json();
-    }
-
-    async getAllCourts(): Promise<Court[]> {
-        try {
-            const response = await fetch(`${API_URL}/courts`, {
-                headers: this.getAuthHeaders()
-            });
-            return this.handleResponse<Court[]>(response);
-        } catch (error) {
-            console.error('Error fetching courts:', error);
-            throw error;
-        }
-    }
-
-    async createCourt(data: CreateCourtData): Promise<Court> {
-        try {
-            const formData = new FormData();
-            formData.append('name', data.name);
-            formData.append('type', data.type);
-            formData.append('capacity', data.capacity.toString());
-            formData.append('pricePerHour', data.pricePerHour.toString());
-            formData.append('status', data.status);
-            
-            if (data.image) {
-                formData.append('image', data.image);
-            }
-
-            const response = await fetch(`${API_URL}/courts`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                },
-                body: formData
-            });
-            return this.handleResponse<Court>(response);
-        } catch (error) {
-            console.error('Error creating court:', error);
-            throw error;
-        }
-    }
-
-    async updateCourt(id: number, data: Partial<CreateCourtData>): Promise<Court> {
-        try {
-            const formData = new FormData();
-            
-            if (data.name) formData.append('name', data.name);
-            if (data.type) formData.append('type', data.type);
-            if (data.capacity) formData.append('capacity', data.capacity.toString());
-            if (data.pricePerHour) formData.append('pricePerHour', data.pricePerHour.toString());
-            if (data.status) formData.append('status', data.status);
-            if (data.image) formData.append('image', data.image);
-
-            const response = await fetch(`${API_URL}/courts/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                },
-                body: formData
-            });
-            return this.handleResponse<Court>(response);
-        } catch (error) {
-            console.error('Error updating court:', error);
-            throw error;
-        }
-    }
-
-    async deleteCourt(id: number): Promise<void> {
-        try {
-            const response = await fetch(`${API_URL}/courts/${id}`, {
-                method: 'DELETE',
-                headers: this.getAuthHeaders()
-            });
-            
-            if (!response.ok) {
-                throw new Error('Error deleting court');
-            }
-        } catch (error) {
-            console.error('Error deleting court:', error);
-            throw error;
-        }
-    }
-}
-
-export default new CourtService();

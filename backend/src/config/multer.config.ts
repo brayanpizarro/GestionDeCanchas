@@ -3,7 +3,7 @@ import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
 
-const validMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+const validMimeTypes = ['image/png', 'image/jpeg'];
 
 export const multerConfig = {
   storage: diskStorage({

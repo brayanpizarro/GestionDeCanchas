@@ -3,7 +3,7 @@ export declare class CreateProductDto {
     description?: string;
     price: number;
     stock: number;
-    category: string;
-    available?: boolean;
+    category?: string;
+    available: boolean;
     imagePath?: string;
 }

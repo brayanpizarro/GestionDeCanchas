@@ -1,14 +1,4 @@
-import {
-    Controller,
-    Get,
-    Post,
-    Body,
-    Param,
-    Put,
-    Delete,
-    UseInterceptors,
-    UploadedFile,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseInterceptors, UploadedFile, Patch } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from '../config/multer.config';
 import { CourtsService } from './courts.service';
@@ -36,6 +26,11 @@ export class CourtsController {
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.courtsService.findOne(+id);
+    }
+
+    @Patch(':id/status')
+    updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
+        return this.courtsService.updateStatus(+id, body.status);
     }
 
     @Put(':id')

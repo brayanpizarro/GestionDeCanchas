@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateCourtDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 class CreateCourtDto {
     name;
     type;
@@ -27,7 +28,9 @@ __decorate([
 ], CreateCourtDto.prototype, "name", void 0);
 __decorate([
     (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.IsEnum)(['covered', 'uncovered']),
+    (0, class_validator_1.IsEnum)(['covered', 'uncovered'], {
+        message: 'El tipo debe ser "covered" o "uncovered"'
+    }),
     __metadata("design:type", String)
 ], CreateCourtDto.prototype, "type", void 0);
 __decorate([
@@ -36,17 +39,43 @@ __decorate([
     __metadata("design:type", String)
 ], CreateCourtDto.prototype, "imagePath", void 0);
 __decorate([
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.Min)(2),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsInt)({ message: 'La capacidad debe ser un número entero' }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string') {
+            const parsed = parseInt(value, 10);
+            return isNaN(parsed) ? undefined : parsed;
+        }
+        if (typeof value === 'number') {
+            return value;
+        }
+        return undefined;
+    }),
     __metadata("design:type", Number)
 ], CreateCourtDto.prototype, "capacity", void 0);
 __decorate([
-    (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsNumber)({}, { message: 'El precio por hora debe ser un número válido' }),
+    (0, class_validator_1.Min)(0, { message: 'El precio por hora no puede ser negativo' }),
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string') {
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? undefined : parsed;
+        }
+        if (typeof value === 'number') {
+            return value;
+        }
+        return undefined;
+    }),
     __metadata("design:type", Number)
 ], CreateCourtDto.prototype, "pricePerHour", void 0);
 __decorate([
-    (0, class_validator_1.IsEnum)(['available', 'occupied', 'maintenance']),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsEnum)(['available', 'occupied', 'maintenance'], {
+        message: 'El estado debe ser "available", "occupied" o "maintenance"'
+    }),
     __metadata("design:type", String)
 ], CreateCourtDto.prototype, "status", void 0);
 //# sourceMappingURL=create-court.dto.js.map

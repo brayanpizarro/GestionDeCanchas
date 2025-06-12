@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity()
+@Entity('products')
 export class Product {
     @PrimaryGeneratedColumn()
     id: number;
@@ -8,10 +8,10 @@ export class Product {
     @Column()
     name: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ nullable: true })
     description: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column('decimal', { precision: 10, scale: 2 })
     price: number;
 
     @Column()
@@ -21,7 +21,9 @@ export class Product {
     category: string;
 
     @Column({ default: true })
-    available: boolean;    @Column({ nullable: true })
+    available: boolean;
+
+    @Column({ nullable: true })
     imagePath: string;
 
     @Column({ nullable: true })

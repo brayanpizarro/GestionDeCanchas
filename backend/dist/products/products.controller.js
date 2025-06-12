@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var ProductsController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductsController = void 0;
 const common_1 = require("@nestjs/common");
@@ -20,48 +21,97 @@ const update_product_dto_1 = require("./dto/update-product.dto");
 const auth_guard_1 = require("../auth/guard/auth.guard");
 const platform_express_1 = require("@nestjs/platform-express");
 const multer_config_1 = require("../config/multer.config");
-let ProductsController = class ProductsController {
+let ProductsController = ProductsController_1 = class ProductsController {
     productsService;
+    logger = new common_1.Logger(ProductsController_1.name);
     constructor(productsService) {
         this.productsService = productsService;
     }
     async create(createProductDto, file) {
-        if (file) {
-            createProductDto['imagePath'] = file.path.replace(/\\/g, '/');
+        try {
+            this.logger.log('Received create product request:', {
+                dto: createProductDto,
+                hasFile: !!file,
+                name: createProductDto.name,
+                category: createProductDto.category,
+                price: createProductDto.price,
+                stock: createProductDto.stock
+            });
+            const productData = { ...createProductDto };
+            if (file) {
+                productData.imagePath = file.path.replace(/\\/g, '/');
+                this.logger.log('Added image path:', productData.imagePath);
+            }
+            const result = await this.productsService.create(productData);
+            this.logger.log('Product created successfully:', result.id);
+            return result;
         }
-        return await this.productsService.create(createProductDto);
+        catch (error) {
+            this.logger.error('Error in create controller:', error);
+            if (error instanceof common_1.HttpException) {
+                throw error;
+            }
+            throw new common_1.HttpException('Failed to create product', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
-    findAll() {
-        return this.productsService.findAll();
+    async findAll() {
+        try {
+            return await this.productsService.findAll();
+        }
+        catch (error) {
+            this.logger.error('Error in findAll controller:', error);
+            throw error;
+        }
     }
-    getLowStockProducts() {
-        return this.productsService.getLowStockProducts();
+    async getLowStockProducts() {
+        try {
+            return await this.productsService.getLowStockProducts();
+        }
+        catch (error) {
+            this.logger.error('Error in getLowStockProducts controller:', error);
+            throw error;
+        }
     }
     async getStats() {
-        const [products, lowStockProducts] = await Promise.all([
-            this.productsService.findAll(),
-            this.productsService.getLowStockProducts()
-        ]);
-        const totalStock = await this.productsService.getTotalStock();
-        return {
-            total: products.length,
-            totalStock,
-            lowStock: lowStockProducts.length,
-            categories: [...new Set(products.map(p => p.category))],
-        };
+        try {
+            return await this.productsService.getStats();
+        }
+        catch (error) {
+            this.logger.error('Error in getStats controller:', error);
+            throw error;
+        }
     }
-    findOne(id) {
-        return this.productsService.findOne(+id);
+    async findOne(id) {
+        try {
+            return await this.productsService.findOne(+id);
+        }
+        catch (error) {
+            this.logger.error(`Error in findOne controller for ID ${id}:`, error);
+            throw error;
+        }
     }
     async update(id, updateProductDto, file) {
-        if (file) {
-            updateProductDto['imagePath'] = file.path.replace(/\\/g, '/');
+        try {
+            const productData = { ...updateProductDto };
+            if (file) {
+                productData.imagePath = file.path.replace(/\\/g, '/');
+            }
+            return await this.productsService.update(+id, productData);
         }
-        return await this.productsService.update(+id, updateProductDto);
+        catch (error) {
+            this.logger.error(`Error in update controller for ID ${id}:`, error);
+            throw error;
+        }
     }
-    remove(id) {
-        this.productsService.remove(+id);
-        return { message: 'Product deleted successfully' };
+    async remove(id) {
+        try {
+            await this.productsService.remove(+id);
+            return { message: 'Product deleted successfully' };
+        }
+        catch (error) {
+            this.logger.error(`Error in remove controller for ID ${id}:`, error);
+            throw error;
+        }
     }
 };
 exports.ProductsController = ProductsController;
@@ -78,13 +128,13 @@ __decorate([
     (0, common_1.Get)(),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('low-stock'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "getLowStockProducts", null);
 __decorate([
     (0, common_1.Get)('stats'),
@@ -97,7 +147,7 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
@@ -114,9 +164,9 @@ __decorate([
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "remove", null);
-exports.ProductsController = ProductsController = __decorate([
+exports.ProductsController = ProductsController = ProductsController_1 = __decorate([
     (0, common_1.Controller)('products'),
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __metadata("design:paramtypes", [products_service_1.ProductsService])

@@ -4,7 +4,7 @@ exports.multerConfig = void 0;
 const fs_1 = require("fs");
 const multer_1 = require("multer");
 const uuid_1 = require("uuid");
-const validMimeTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+const validMimeTypes = ['image/png', 'image/jpeg'];
 exports.multerConfig = {
     storage: (0, multer_1.diskStorage)({
         destination: (_req, _file, cb) => {

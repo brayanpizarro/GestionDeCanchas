@@ -18,25 +18,50 @@ const auth_service_1 = require("./auth.service");
 const register_dto_1 = require("./dto/register.dto");
 const login_dto_1 = require("./dto/login.dto");
 const auth_guard_1 = require("./guard/auth.guard");
-const user_entity_1 = require("../users/entities/user.entity");
 let AuthController = class AuthController {
     authService;
     constructor(authService) {
         this.authService = authService;
     }
     async register(registerDto) {
-        return this.authService.register(registerDto);
+        try {
+            return await this.authService.register(registerDto);
+        }
+        catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            throw new common_1.UnauthorizedException(`Error en el registro: ${errorMessage}`);
+        }
     }
     async login(loginDto) {
-        return this.authService.login(loginDto);
+        try {
+            const result = await this.authService.login(loginDto);
+            const { password, ...userWithoutPassword } = result.user;
+            return {
+                token: result.token,
+                access_token: result.token,
+                user: userWithoutPassword,
+            };
+        }
+        catch (error) {
+            if (error instanceof common_1.UnauthorizedException) {
+                throw error;
+            }
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+            throw new common_1.UnauthorizedException(`Error en el login: ${errorMessage}`);
+        }
     }
     getProfile(req) {
-        return req.user;
+        const { password, ...userWithoutPassword } = req.user;
+        return userWithoutPassword;
+    }
+    async logout() {
+        return { message: 'Logout exitoso' };
     }
 };
 exports.AuthController = AuthController;
 __decorate([
     (0, common_1.Post)('register'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [register_dto_1.RegisterDto]),
@@ -44,6 +69,7 @@ __decorate([
 ], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)('login'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [login_dto_1.LoginDto]),
@@ -52,11 +78,20 @@ __decorate([
 __decorate([
     (0, common_1.Get)('profile'),
     (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", user_entity_1.User)
+    __metadata("design:returntype", Object)
 ], AuthController.prototype, "getProfile", null);
+__decorate([
+    (0, common_1.Post)('logout'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "logout", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

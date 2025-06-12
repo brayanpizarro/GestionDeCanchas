@@ -100,6 +100,9 @@ let ReservationsService = class ReservationsService {
             relations: ['court', 'user', 'players'],
         });
     }
+    async getTotalCount() {
+        return await this.reservationsRepository.count();
+    }
     async findByUser(userId) {
         if (!Number.isInteger(userId) || userId <= 0) {
             throw new common_1.BadRequestException('Invalid user ID');

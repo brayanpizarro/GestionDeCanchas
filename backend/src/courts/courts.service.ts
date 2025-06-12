@@ -7,7 +7,7 @@ import { CreateCourtDto } from './dto/create-court.dto';
 import { UpdateCourtDto } from './dto/update-court.dto';
 
 @Injectable()
-export class CourtsService {  // Added 'export' keyword here
+export class CourtsService {  
     constructor(
         @InjectRepository(Court)
         private courtsRepository: Repository<Court>,
@@ -41,6 +41,12 @@ export class CourtsService {  // Added 'export' keyword here
             throw new NotFoundException(`Court with ID ${id} not found`);
         }
         return court;
+    }
+
+    async updateStatus(id: number, status: string): Promise<Court> {
+        const court = await this.findOne(id);
+        court.status = status;
+        return await this.courtsRepository.save(court);
     }
 
     async update(id: number, updateCourtDto: UpdateCourtDto): Promise<Court> {

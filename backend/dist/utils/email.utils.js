@@ -61,7 +61,7 @@ async function sendEmail(to, subject, text) {
     try {
         common_1.Logger.log(`Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`);
         const info = await transporter.sendMail({
-            from: 'Soporte.CanchasUCENIN@gmail.com',
+            from: '"Soporte UCENIN" <no-reply@ucenin.com>',
             to,
             subject,
             text,
@@ -76,7 +76,7 @@ async function sendPasswordResetCode(email, code, userName) {
     try {
         common_1.Logger.log(`Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`);
         const mailOptions = {
-            from: '"Soporte UCENIN" <${process.env.EMAIL_USER}>',
+            from: '"Soporte UCENIN" <no-reply@ucenin.com>',
             to: email,
             subject: 'Código de restablecimiento de contraseña - UCENIN',
             html: `
@@ -103,7 +103,7 @@ async function sendPasswordResetConfirmation(email, userName) {
     try {
         common_1.Logger.log(`Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`);
         const mailOptions = {
-            from: '"Soporte UCENIN" <${process.env.EMAIL_USER}>',
+            from: '"Soporte UCENIN" <no-reply@ucenin.com>',
             to: email,
             subject: 'Contraseña actualizada - UCENIN',
             html: `

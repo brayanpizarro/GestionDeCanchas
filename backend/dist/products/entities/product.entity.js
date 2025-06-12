@@ -34,11 +34,11 @@ __decorate([
     __metadata("design:type", String)
 ], Product.prototype, "name", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Product.prototype, "description", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
+    (0, typeorm_1.Column)('decimal', { precision: 10, scale: 2 }),
     __metadata("design:type", Number)
 ], Product.prototype, "price", void 0);
 __decorate([
@@ -70,6 +70,6 @@ __decorate([
     __metadata("design:type", Date)
 ], Product.prototype, "updatedAt", void 0);
 exports.Product = Product = __decorate([
-    (0, typeorm_1.Entity)()
+    (0, typeorm_1.Entity)('products')
 ], Product);
 //# sourceMappingURL=product.entity.js.map

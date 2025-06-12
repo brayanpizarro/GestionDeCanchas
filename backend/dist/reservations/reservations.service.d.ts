@@ -12,6 +12,7 @@ export declare class ReservationsService {
     create(rawDto: unknown): Promise<Reservation>;
     private calculateAmount;
     findAll(): Promise<Reservation[]>;
+    getTotalCount(): Promise<number>;
     findByUser(userId: number): Promise<Reservation[]>;
     findOne(id: number): Promise<Reservation>;
     updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<Reservation>;

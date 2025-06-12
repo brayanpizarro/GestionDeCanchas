@@ -5,11 +5,19 @@ export declare class ReservationsController {
     constructor(reservationsService: ReservationsService);
     create(createReservationDto: CreateReservationDto): Promise<import("./entities/reservation.entity").Reservation>;
     findAll(): Promise<import("./entities/reservation.entity").Reservation[]>;
+    getStats(): Promise<{
+        total: number;
+        pending: number;
+        confirmed: number;
+        completed: number;
+        cancelled: number;
+        todayReservations: number;
+    }>;
     findByUser(userId: number): Promise<import("./entities/reservation.entity").Reservation[]>;
-    findOne(id: number): Promise<import("./entities/reservation.entity").Reservation>;
-    updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<import("./entities/reservation.entity").Reservation>;
     getAvailableTimeSlots(courtId: number, date: string): Promise<{
         startTime: Date;
         endTime: Date;
     }[]>;
+    findOne(id: number): Promise<import("./entities/reservation.entity").Reservation>;
+    updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<import("./entities/reservation.entity").Reservation>;
 }

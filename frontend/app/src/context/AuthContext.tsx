@@ -29,10 +29,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Función para verificar autenticación al cargar la app
+  // Check authentication when app loads
   const checkAuth = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        setUser(null);
+        setIsAuthenticated(false);
+        return;
+      }
+
       const currentUser = await getCurrentUser();
       
       if (currentUser) {
@@ -40,26 +48,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
         console.log('Usuario autenticado:', currentUser);
       } else {
-        setUser(null);
-        setIsAuthenticated(false);
-        console.log('No hay usuario autenticado');
+        // Token exists but user fetch failed - clear invalid data
+        clearAuthData();
       }
     } catch (error) {
       console.error('Error verificando autenticación:', error);
-      setUser(null);
-      setIsAuthenticated(false);
-      // Limpiar datos inválidos
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+      clearAuthData();
     } finally {
       setLoading(false);
     }
   };
 
-  // Función para hacer signIn 
+  // Helper function to clear authentication data
+  const clearAuthData = () => {
+    setUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+  };
+
+  // Sign in function with better error handling
   const signIn = async (email: string, password: string) => {
     try {
-      // Hacer la petición de login al servidor
+      setLoading(true);
+      
       const response = await fetch('http://localhost:3001/api/v1/auth/login', { 
         method: 'POST',
         headers: {
@@ -68,65 +80,83 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al iniciar sesión');
+        throw new Error(data.message || `Error ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      // Handle both 'token' and 'access_token' for compatibility
+      const token = data.token || data.access_token;
       
-      // Si el login es exitoso, usar la función login para guardar los datos
-      login(data.user, data.token);
+      if (!token || !data.user) {
+        throw new Error('Respuesta de login inválida del servidor');
+      }
+      
+      login(data.user, token);
       
     } catch (error) {
       console.error('Error en signIn:', error);
-      throw error; // Re-lanzar el error para que lo maneje el componente
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Función para hacer login (llamada después de login exitoso)
+  // Login function (called after successful authentication)
   const login = (userData: User, token: string) => {
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-    setIsAuthenticated(true);
-    console.log('Login exitoso:', userData);
+    try {
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      setIsAuthenticated(true);
+      console.log('Login exitoso:', userData);
+    } catch (error) {
+      console.error('Error guardando datos de autenticación:', error);
+      throw new Error('Error guardando datos de sesión');
+    }
   };
 
-  // Función para hacer logout
+  // Logout function with better cleanup
   const logout = async () => {
     try {
+      setLoading(true);
       await logoutService();
     } catch (error) {
-      console.error('Error en logout:', error);
+      console.error('Error en logout del servidor:', error);
+      // Continue with local cleanup even if server logout fails
     } finally {
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+      clearAuthData();
+      setLoading(false);
       console.log('Logout exitoso');
     }
   };
 
-  // Función para actualizar datos del usuario
+  // Update user data
   const updateUser = (userData: User) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    try {
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      console.error('Error actualizando datos del usuario:', error);
+    }
   };
 
-  // Verificar autenticación al montar el componente
+  // Check authentication on component mount
   useEffect(() => {
     checkAuth();
   }, []);
 
-  // Debug: mostrar estado actual
+  // Debug: show current state (remove in production)
   useEffect(() => {
-    console.log('AuthContext estado:', {
-      user,
-      isAuthenticated,
-      loading,
-      hasToken: !!localStorage.getItem('authToken')
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('AuthContext estado:', {
+        user,
+        isAuthenticated,
+        loading,
+        hasToken: !!localStorage.getItem('authToken')
+      });
+    }
   }, [user, isAuthenticated, loading]);
 
   return (
@@ -136,7 +166,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isAuthenticated,
         loading,
         login,
-        signIn, // Agregamos signIn al valor del contexto
+        signIn,
         logout,
         updateUser,
       }}
@@ -146,7 +176,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-// Hook personalizado para usar el contexto
+// Custom hook to use the context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

@@ -111,6 +111,10 @@ export class ReservationsService {
         });
     }
 
+    async getTotalCount(): Promise<number> {
+        return await this.reservationsRepository.count();
+    }
+
     async findByUser(userId: number): Promise<Reservation[]> {
         if (!Number.isInteger(userId) || userId <= 0) {
             throw new BadRequestException('Invalid user ID');
@@ -225,4 +229,5 @@ export class ReservationsService {
 
         return availableTimeSlots;
     }
+
 }

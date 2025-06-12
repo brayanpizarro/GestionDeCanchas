@@ -3,6 +3,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 export declare class ProductsController {
     private readonly productsService;
+    private readonly logger;
     constructor(productsService: ProductsService);
     create(createProductDto: CreateProductDto, file: Express.Multer.File): Promise<import("./entities/product.entity").Product>;
     findAll(): Promise<import("./entities/product.entity").Product[]>;
@@ -10,12 +11,12 @@ export declare class ProductsController {
     getStats(): Promise<{
         total: number;
         totalStock: number;
+        categories: any[];
         lowStock: number;
-        categories: string[];
     }>;
     findOne(id: string): Promise<import("./entities/product.entity").Product>;
     update(id: string, updateProductDto: UpdateProductDto, file: Express.Multer.File): Promise<import("./entities/product.entity").Product>;
-    remove(id: string): {
+    remove(id: string): Promise<{
         message: string;
-    };
+    }>;
 }

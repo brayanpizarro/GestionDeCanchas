@@ -11,13 +11,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateProductDto = void 0;
 const class_validator_1 = require("class-validator");
+const class_transformer_1 = require("class-transformer");
 class CreateProductDto {
     name;
     description;
     price;
     stock;
     category;
-    available;
+    available = true;
     imagePath;
 }
 exports.CreateProductDto = CreateProductDto;
@@ -32,19 +33,56 @@ __decorate([
 ], CreateProductDto.prototype, "description", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string') {
+            const parsed = parseFloat(value);
+            if (isNaN(parsed)) {
+                throw new Error('Price must be a valid number');
+            }
+            return parsed;
+        }
+        if (typeof value !== 'number') {
+            throw new Error('Price must be a number');
+        }
+        return value;
+    }),
     __metadata("design:type", Number)
 ], CreateProductDto.prototype, "price", void 0);
 __decorate([
     (0, class_validator_1.IsNumber)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string') {
+            const parsed = parseInt(value, 10);
+            if (isNaN(parsed)) {
+                throw new Error('Stock must be a valid integer');
+            }
+            return parsed;
+        }
+        if (typeof value !== 'number') {
+            throw new Error('Stock must be a number');
+        }
+        return value;
+    }),
     __metadata("design:type", Number)
 ], CreateProductDto.prototype, "stock", void 0);
 __decorate([
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateProductDto.prototype, "category", void 0);
 __decorate([
     (0, class_validator_1.IsBoolean)(),
     (0, class_validator_1.IsOptional)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string') {
+            if (value.toLowerCase() === 'true')
+                return true;
+            if (value.toLowerCase() === 'false')
+                return false;
+            throw new Error('Available must be a boolean or "true"/"false" string');
+        }
+        return Boolean(value);
+    }),
     __metadata("design:type", Boolean)
 ], CreateProductDto.prototype, "available", void 0);
 __decorate([

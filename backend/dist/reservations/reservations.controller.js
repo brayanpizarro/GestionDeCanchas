@@ -27,17 +27,35 @@ let ReservationsController = class ReservationsController {
     findAll() {
         return this.reservationsService.findAll();
     }
+    async getStats() {
+        const [reservations, totalReservations] = await Promise.all([
+            this.reservationsService.findAll(),
+            this.reservationsService.getTotalCount()
+        ]);
+        const statusCounts = reservations.reduce((acc, reservation) => {
+            acc[reservation.status] = (acc[reservation.status] || 0) + 1;
+            return acc;
+        }, {});
+        return {
+            total: totalReservations,
+            pending: statusCounts['pending'] || 0,
+            confirmed: statusCounts['confirmed'] || 0,
+            completed: statusCounts['completed'] || 0,
+            cancelled: statusCounts['cancelled'] || 0,
+            todayReservations: reservations.filter(r => new Date(r.startTime).toDateString() === new Date().toDateString()).length
+        };
+    }
     findByUser(userId) {
         return this.reservationsService.findByUser(userId);
+    }
+    getAvailableTimeSlots(courtId, date) {
+        return this.reservationsService.getAvailableTimeSlots(courtId, date);
     }
     findOne(id) {
         return this.reservationsService.findOne(id);
     }
     updateStatus(id, status) {
         return this.reservationsService.updateStatus(id, status);
-    }
-    getAvailableTimeSlots(courtId, date) {
-        return this.reservationsService.getAvailableTimeSlots(courtId, date);
     }
 };
 exports.ReservationsController = ReservationsController;
@@ -55,12 +73,26 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "findAll", null);
 __decorate([
+    (0, common_1.Get)('stats'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "getStats", null);
+__decorate([
     (0, common_1.Get)('user/:userId'),
     __param(0, (0, common_1.Param)('userId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "findByUser", null);
+__decorate([
+    (0, common_1.Get)('available/:courtId'),
+    __param(0, (0, common_1.Param)('courtId')),
+    __param(1, (0, common_1.Query)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String]),
+    __metadata("design:returntype", void 0)
+], ReservationsController.prototype, "getAvailableTimeSlots", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),
@@ -76,14 +108,6 @@ __decorate([
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "updateStatus", null);
-__decorate([
-    (0, common_1.Get)('available/:courtId'),
-    __param(0, (0, common_1.Param)('courtId')),
-    __param(1, (0, common_1.Query)('date')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], ReservationsController.prototype, "getAvailableTimeSlots", null);
 exports.ReservationsController = ReservationsController = __decorate([
     (0, common_1.Controller)('reservations'),
     __metadata("design:paramtypes", [reservations_service_1.ReservationsService])

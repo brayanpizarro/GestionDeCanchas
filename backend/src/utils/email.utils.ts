@@ -39,7 +39,7 @@ export async function sendEmail(
     );
 
     const info = await transporter.sendMail({
-      from: 'Soporte.CanchasUCENIN@gmail.com',
+      from: '"Soporte UCENIN" <no-reply@ucenin.com>',
       to,
       subject,
       text,
@@ -65,7 +65,7 @@ export async function sendPasswordResetCode(
     );
 
     const mailOptions = {
-      from: '"Soporte UCENIN" <${process.env.EMAIL_USER}>',
+      from: '"Soporte UCENIN" <no-reply@ucenin.com>',
       to: email,
       subject: 'Código de restablecimiento de contraseña - UCENIN',
       html: `
@@ -102,7 +102,7 @@ export async function sendPasswordResetConfirmation(
     );
 
     const mailOptions = {
-      from: '"Soporte UCENIN" <${process.env.EMAIL_USER}>',
+      from: '"Soporte UCENIN" <no-reply@ucenin.com>',
       to: email,
       subject: 'Contraseña actualizada - UCENIN',
       html: `
