@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThanOrEqual } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -6,6 +6,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UserRole, UserStats } from './types/user.types';
 import { TopPlayerRaw } from './types/top-player.types';
+import * as bcrypt from 'bcrypt';
+import { sendWelcomeEmail, sendPasswordChangeNotification } from '../utils/email.utils';
 
 @Injectable()
 export class UsersService {
@@ -18,7 +20,17 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto) { //crear un nuevo usuario
     //el createUserDto es un objeto que contiene los datos del usuario a crear
-    return await this.userRepository.save(createUserDto); //guardar el usuario en la base de datos
+    const newUser = await this.userRepository.save(createUserDto); //guardar el usuario en la base de datos
+    
+    // Enviar email de bienvenida
+    try {
+      await sendWelcomeEmail(newUser.email, newUser.name);
+    } catch (error) {
+      console.error('Error enviando email de bienvenida:', error);
+      // No fallar la creación del usuario si el email falla
+    }
+    
+    return newUser;
   }
 
   async findAll() {//buscar todos los usuarios
@@ -36,6 +48,29 @@ export class UsersService {
     } catch (error) {
       console.error('Error finding user by email:', error);
       return null;
+    }
+  }
+
+  async updatePassword(id: number, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      throw new HttpException('Contraseña actual incorrecta', HttpStatus.UNAUTHORIZED);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.update(id, { password: hashedPassword });
+    
+    // Enviar notificación por email del cambio de contraseña
+    try {
+      await sendPasswordChangeNotification(user.email, user.name);
+    } catch (error) {
+      console.error('Error enviando notificación de cambio de contraseña:', error);
+      // No fallar la actualización si el email falla
     }
   }
 
@@ -108,9 +143,7 @@ export class UsersService {
       lastRegistered: lastRegistered?.createdAt || null
     };
   }  async getTopPlayers() {
-    const users = await this.userRepository
-      .createQueryBuilder('user')
-      .leftJoin('user.reservations', 'reservation')
+    const users = await this.userRepository.createQueryBuilder('user').leftJoin('user.reservations', 'reservation')
       .select([
         'user.id as user_id',
         'user.name as user_name',

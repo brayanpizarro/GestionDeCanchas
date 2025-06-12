@@ -7,6 +7,9 @@ export declare class CourtsController {
     create(createCourtDto: CreateCourtDto, file: Express.Multer.File): Promise<import("./entities/court.entity").Court>;
     findAll(): Promise<import("./entities/court.entity").Court[]>;
     findOne(id: string): Promise<import("./entities/court.entity").Court>;
+    updateStatus(id: string, body: {
+        status: string;
+    }): Promise<import("./entities/court.entity").Court>;
     update(id: string, updateCourtDto: UpdateCourtDto, file: Express.Multer.File): Promise<import("./entities/court.entity").Court>;
     remove(id: string): Promise<void>;
     getCourtUsage(): Promise<{

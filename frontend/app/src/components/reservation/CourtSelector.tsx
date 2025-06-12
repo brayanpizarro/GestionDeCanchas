@@ -21,9 +21,8 @@ const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, on
       </div>
     )
   }
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
       {availableCourts.map((court) => (
         <div
           key={court.id}
@@ -37,11 +36,11 @@ const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, on
               <img
                 src={court.imageUrl || court.imagePath || "/placeholder.svg?height=200&width=300"}
                 alt={court.name}
-                className="w-full h-48 object-cover"
+                className="w-full h-32 sm:h-40 lg:h-48 object-cover"
               />
             ) : (
-              <div className="w-full h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
-                <Building2 className="w-16 h-16 text-blue-400" />
+              <div className="w-full h-32 sm:h-40 lg:h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                <Building2 className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 text-blue-400" />
               </div>
             )}
             {selectedCourt === court.id && (
@@ -50,24 +49,24 @@ const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, on
               </div>
             )}
           </div>
-          <div className="p-4">
-            <h3 className="text-lg font-semibold text-[#071d40] mb-2">{court.name}</h3>
-            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{court.description}</p>
-            <div className="flex justify-between items-center mb-2">
-              <div className="flex items-center text-[#071d40] font-bold text-lg">
+          <div className="p-3 sm:p-4">
+            <h3 className="text-base sm:text-lg font-semibold text-[#071d40] mb-1 sm:mb-2">{court.name}</h3>
+            <p className="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2">{court.description}</p>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
+              <div className="flex items-center text-[#071d40] font-bold text-base sm:text-lg">
                 <DollarSign className="w-4 h-4 mr-1" />
                 {court.price.toLocaleString()}/hora
               </div>
-              <div className="flex items-center text-sm text-gray-500">
+              <div className="flex items-center text-xs sm:text-sm text-gray-500">
                 <Users className="w-4 h-4 mr-1" />
                 Máx. {court.maxPlayers}
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Disponible
               </span>
-              {selectedCourt === court.id && <span className="text-sm font-medium text-[#071d40]">Seleccionada</span>}
+              {selectedCourt === court.id && <span className="text-xs sm:text-sm font-medium text-[#071d40]">Seleccionada</span>}
             </div>
           </div>
         </div>

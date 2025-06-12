@@ -23,24 +23,39 @@ const player_entity_1 = require("./entities/player.entity");
 const create_reservation_dto_1 = require("./dto/create-reservation.dto");
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
+const email_service_1 = require("../email/email.service");
 let ReservationsService = class ReservationsService {
     reservationsRepository;
     courtsRepository;
     usersRepository;
     playersRepository;
-    constructor(reservationsRepository, courtsRepository, usersRepository, playersRepository) {
+    emailService;
+    constructor(reservationsRepository, courtsRepository, usersRepository, playersRepository, emailService) {
         this.reservationsRepository = reservationsRepository;
         this.courtsRepository = courtsRepository;
         this.usersRepository = usersRepository;
         this.playersRepository = playersRepository;
+        this.emailService = emailService;
     }
     async create(rawDto) {
+        console.log('Raw DTO received:', rawDto);
         const dto = (0, class_transformer_1.plainToInstance)(create_reservation_dto_1.CreateReservationDto, rawDto, {
             excludeExtraneousValues: true,
         });
+        console.log('Transformed DTO:', dto);
         const validationErrors = await (0, class_validator_1.validate)(dto);
         if (validationErrors.length > 0) {
-            throw new common_1.BadRequestException('Invalid reservation data');
+            console.error('Validation errors:', validationErrors.map(err => ({
+                property: err.property,
+                constraints: err.constraints
+            })));
+            throw new common_1.BadRequestException({
+                message: 'Invalid reservation data',
+                errors: validationErrors.map(err => ({
+                    property: err.property,
+                    constraints: err.constraints
+                }))
+            });
         }
         const { courtId, userId, startTime, endTime, players } = dto;
         const court = await this.courtsRepository.findOneBy({ id: courtId });
@@ -87,7 +102,23 @@ let ReservationsService = class ReservationsService {
             });
         });
         savedReservation.players = await this.playersRepository.save(playerEntities);
-        return await this.reservationsRepository.save(savedReservation);
+        const finalReservation = await this.reservationsRepository.save(savedReservation);
+        try {
+            const duration = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
+            await this.emailService.sendReservationConfirmation(user.email, user.name, {
+                id: finalReservation.id,
+                courtName: court.name,
+                date: startDate.toISOString(),
+                startTime: startDate.toISOString(),
+                endTime: endDate.toISOString(),
+                duration: Math.round(duration),
+                players: players.map(p => `${p.firstName} ${p.lastName}`)
+            });
+        }
+        catch (emailError) {
+            console.error('Error enviando email de confirmación:', emailError);
+        }
+        return finalReservation;
     }
     calculateAmount(court, startTime, endTime) {
         const start = new Date(startTime);
@@ -127,15 +158,32 @@ let ReservationsService = class ReservationsService {
         return reservation;
     }
     async updateStatus(id, status) {
-        if (!Number.isInteger(id) || id <= 0) {
-            throw new common_1.BadRequestException('Invalid reservation ID');
+        const reservation = await this.reservationsRepository.findOne({
+            where: { id },
+            relations: ['court', 'user', 'players'],
+        });
+        if (!reservation) {
+            throw new common_1.NotFoundException(`Reservation with ID ${id} not found`);
         }
-        if (!status || !['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
-            throw new common_1.BadRequestException('Invalid status');
-        }
-        const reservation = await this.findOne(id);
+        const oldStatus = reservation.status;
         reservation.status = status;
-        return await this.reservationsRepository.save(reservation);
+        const updatedReservation = await this.reservationsRepository.save(reservation);
+        if (status === 'cancelled' && oldStatus !== 'cancelled') {
+            try {
+                await this.emailService.sendReservationCancellation(reservation.user.email, reservation.user.name, {
+                    id: reservation.id,
+                    courtName: reservation.court.name,
+                    date: reservation.startTime.toISOString(),
+                    startTime: reservation.startTime.toISOString(),
+                    endTime: reservation.endTime.toISOString(),
+                    cancellationReason: 'Cancelación solicitada por el usuario'
+                });
+            }
+            catch (emailError) {
+                console.error('Error enviando email de cancelación:', emailError);
+            }
+        }
+        return updatedReservation;
     }
     async getAvailableTimeSlots(courtId, date) {
         if (!Number.isInteger(courtId) || courtId <= 0) {
@@ -198,6 +246,7 @@ exports.ReservationsService = ReservationsService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        email_service_1.EmailService])
 ], ReservationsService);
 //# sourceMappingURL=reservations.service.js.map

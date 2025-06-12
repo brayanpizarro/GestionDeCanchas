@@ -10,6 +10,7 @@ export declare class UsersService {
     findAll(): Promise<User[]>;
     findOne(id: number): Promise<User | null>;
     findOneByEmail(email: string): Promise<User | null>;
+    updatePassword(id: number, currentPassword: string, newPassword: string): Promise<void>;
     update(id: number, updateUserDto: UpdateUserDto): Promise<import("typeorm").UpdateResult>;
     remove(id: number): Promise<import("typeorm").UpdateResult>;
     getActivePlayerCount(): Promise<number>;

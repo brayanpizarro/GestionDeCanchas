@@ -80,3 +80,33 @@ export const getCurrentUser = async (): Promise<User | null> => {
 export const isAuthenticated = async (): Promise<boolean> => {
   return !!(await getCurrentUser());
 };
+
+// Función para actualizar contraseña
+export const updatePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  const token = localStorage.getItem('authToken');
+  const user = localStorage.getItem('user');
+  
+  if (!token || !user) {
+    throw new Error('No hay sesión activa');
+  }
+
+  const userData = JSON.parse(user);
+  
+  const res = await fetch(`http://localhost:3001/api/v1/users/password`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      id: parseInt(userData.id),
+      currentPassword,
+      newPassword
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Error al actualizar la contraseña');
+  }
+};

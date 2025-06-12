@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
+import { updatePassword } from '../service/authService';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { CreditCard, Key, History, Wallet, Edit2, Plus, Eye, EyeOff } from 'lucide-react';
@@ -104,17 +105,20 @@ const ProfilePage: React.FC = () => {
         if (newPassword !== confirmPassword) {
             setError('Las contraseñas no coinciden');
             return;
-        }
-
-        if (newPassword.length < 6) {
-            setError('La contraseña debe tener al menos 6 caracteres');
+        }        if (newPassword.length < 8) {
+            setError('La contraseña debe tener al menos 8 caracteres');
             return;
         }
 
-        try {
+        // Validar que la contraseña cumpla con los requisitos
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])/;
+        if (!passwordRegex.test(newPassword)) {
+            setError('La contraseña debe contener al menos: una minúscula, una mayúscula, un número y un carácter especial');
+            return;
+        }try {
             setLoading(true);
             setError(null);
-            await updatePassword(newPassword);
+            await updatePassword(currentPassword, newPassword);
             alert('Contraseña actualizada exitosamente');
             form.reset();
         } catch (error) {

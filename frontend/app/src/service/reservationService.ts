@@ -1,6 +1,7 @@
 import { API_BASE_URL, getAuthHeaders } from "./api"
 import type { ReservationStats } from "../types"
 import type { CreateReservationDto } from "../types/reservation"
+import type { TimeSlot } from "../types/reservation"
 export class ReservationService {
   static async getReservations() {
     const response = await fetch(`${API_BASE_URL}/reservations`, {
@@ -50,9 +51,10 @@ export class ReservationService {
       throw error
     }
   }
-
   static async createReservation(reservationData: CreateReservationDto) {
     try {
+      console.log('Sending reservation data:', JSON.stringify(reservationData, null, 2));
+      
       const response = await fetch(`${API_BASE_URL}/reservations`, {
         method: "POST",
         headers: {
@@ -63,8 +65,9 @@ export class ReservationService {
       })
 
       if (!response.ok) {
-        const error = await response.text()
-        throw new Error(error || "Error creating reservation")
+        const errorText = await response.text()
+        console.error('Server response:', response.status, errorText)
+        throw new Error(`Error ${response.status}: ${errorText || "Error creating reservation"}`)
       }
 
       return response.json()

@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const users_service_1 = require("./users.service");
 const create_user_dto_1 = require("./dto/create-user.dto");
 const update_user_dto_1 = require("./dto/update-user.dto");
+const update_password_dto_1 = require("./dto/update-password.dto");
 let UsersController = class UsersController {
     usersService;
     constructor(usersService) {
@@ -30,6 +31,11 @@ let UsersController = class UsersController {
     }
     findOne(id) {
         return this.usersService.findOne(id);
+    }
+    async updatePassword(dto) {
+        const { id, currentPassword, newPassword } = dto;
+        await this.usersService.updatePassword(id, currentPassword, newPassword);
+        return { message: 'Contraseña actualizada exitosamente.' };
     }
     update(id, updateUserDto) {
         return this.usersService.update(id, updateUserDto);
@@ -59,6 +65,13 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Patch)('password'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [update_password_dto_1.UpdatePasswordDto]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "updatePassword", null);
 __decorate([
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),

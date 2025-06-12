@@ -49,6 +49,11 @@ let CourtsService = class CourtsService {
         }
         return court;
     }
+    async updateStatus(id, status) {
+        const court = await this.findOne(id);
+        court.status = status;
+        return await this.courtsRepository.save(court);
+    }
     async update(id, updateCourtDto) {
         const court = await this.findOne(id);
         this.courtsRepository.merge(court, updateCourtDto);

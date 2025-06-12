@@ -1,10 +1,43 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -18,13 +51,22 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const user_entity_1 = require("./entities/user.entity");
 const user_types_1 = require("./types/user.types");
+const bcrypt = __importStar(require("bcrypt"));
+const email_utils_1 = require("../utils/email.utils");
 let UsersService = class UsersService {
     userRepository;
     constructor(userRepository) {
         this.userRepository = userRepository;
     }
     async create(createUserDto) {
-        return await this.userRepository.save(createUserDto);
+        const newUser = await this.userRepository.save(createUserDto);
+        try {
+            await (0, email_utils_1.sendWelcomeEmail)(newUser.email, newUser.name);
+        }
+        catch (error) {
+            console.error('Error enviando email de bienvenida:', error);
+        }
+        return newUser;
     }
     async findAll() {
         return await this.userRepository.find();
@@ -39,6 +81,24 @@ let UsersService = class UsersService {
         catch (error) {
             console.error('Error finding user by email:', error);
             return null;
+        }
+    }
+    async updatePassword(id, currentPassword, newPassword) {
+        const user = await this.userRepository.findOneBy({ id });
+        if (!user) {
+            throw new common_1.HttpException('Usuario no encontrado', common_1.HttpStatus.NOT_FOUND);
+        }
+        const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isPasswordValid) {
+            throw new common_1.HttpException('Contraseña actual incorrecta', common_1.HttpStatus.UNAUTHORIZED);
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await this.userRepository.update(id, { password: hashedPassword });
+        try {
+            await (0, email_utils_1.sendPasswordChangeNotification)(user.email, user.name);
+        }
+        catch (error) {
+            console.error('Error enviando notificación de cambio de contraseña:', error);
         }
     }
     async update(id, updateUserDto) {
@@ -95,9 +155,7 @@ let UsersService = class UsersService {
         };
     }
     async getTopPlayers() {
-        const users = await this.userRepository
-            .createQueryBuilder('user')
-            .leftJoin('user.reservations', 'reservation')
+        const users = await this.userRepository.createQueryBuilder('user').leftJoin('user.reservations', 'reservation')
             .select([
             'user.id as user_id',
             'user.name as user_name',

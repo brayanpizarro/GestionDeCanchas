@@ -270,4 +270,4 @@ exports.ProductsService = ProductsService = ProductsService_1 = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(product_entity_1.Product)),
     __metadata("design:paramtypes", [typeorm_2.Repository])
 ], ProductsService);
-//# sourceMappingURL=p
+//# sourceMappingURL=products.service.js.map

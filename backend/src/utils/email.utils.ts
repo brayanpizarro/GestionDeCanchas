@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -120,6 +120,90 @@ export async function sendPasswordResetConfirmation(
   } catch (error) {
     Logger.error(
       `Error sending password reset confirmation: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+export async function sendWelcomeEmail(
+  email: string,
+  userName: string,
+): Promise<void> {
+  try {
+    Logger.log(
+      `Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`,
+    );
+
+    const mailOptions = {
+      from: '"Soporte UCENIN" <no-reply@ucenin.com>',
+      to: email,
+      subject: '¡Bienvenido a UCENIN! - Cuenta creada exitosamente',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>¡Bienvenido ${userName}!</h2>
+          <p>Tu cuenta en UCENIN ha sido creada exitosamente.</p>
+          <p>Ya puedes acceder a nuestros servicios y realizar reservas de canchas deportivas.</p>
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3>¿Qué puedes hacer ahora?</h3>
+            <ul>
+              <li>Ver y reservar canchas disponibles</li>
+              <li>Gestionar tu perfil</li>
+              <li>Revisar tu historial de reservas</li>
+              <li>Agregar métodos de pago</li>
+            </ul>
+          </div>
+          <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
+          <p>¡Disfruta de nuestras instalaciones!<br>Equipo UCENIN</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    Logger.log(`Welcome email sent to: ${email}`);
+  } catch (error) {
+    Logger.error(
+      `Error sending welcome email: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+export async function sendPasswordChangeNotification(
+  email: string,
+  userName: string,
+): Promise<void> {
+  try {
+    Logger.log(
+      `Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`,
+    );
+
+    const mailOptions = {
+      from: '"Soporte UCENIN" <no-reply@ucenin.com>',
+      to: email,
+      subject: 'Contraseña modificada - UCENIN',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Hola ${userName},</h2>
+          <p>Te informamos que tu contraseña ha sido modificada exitosamente desde tu perfil.</p>
+          <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
+            <strong>⚠️ Medidas de seguridad:</strong>
+            <p>Si NO fuiste tú quien realizó este cambio, contacta inmediatamente con nuestro equipo de soporte.</p>
+          </div>
+          <p>Fecha y hora del cambio: ${new Date().toLocaleString('es-CL')}</p>
+          <p>Para tu seguridad, te recomendamos:</p>
+          <ul>
+            <li>No compartir tu contraseña con nadie</li>
+            <li>Usar una contraseña fuerte y única</li>
+            <li>Cerrar sesión en dispositivos compartidos</li>
+          </ul>
+          <p>Saludos,<br>Equipo UCENIN</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    Logger.log(`Password change notification sent to: ${email}`);
+  } catch (error) {
+    Logger.error(
+      `Error sending password change notification: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

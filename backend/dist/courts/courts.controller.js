@@ -36,6 +36,9 @@ let CourtsController = class CourtsController {
     findOne(id) {
         return this.courtsService.findOne(+id);
     }
+    updateStatus(id, body) {
+        return this.courtsService.updateStatus(+id, body.status);
+    }
     update(id, updateCourtDto, file) {
         if (file) {
             updateCourtDto['imagePath'] = file.path.replace(/\\/g, '/');
@@ -72,6 +75,14 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], CourtsController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Patch)(':id/status'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], CourtsController.prototype, "updateStatus", null);
 __decorate([
     (0, common_1.Put)(':id'),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('image', multer_config_1.multerConfig)),

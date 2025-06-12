@@ -11,6 +11,7 @@ export declare class CourtsService {
     findAll(): Promise<Court[]>;
     getRecentReservations(): Promise<Reservation[]>;
     findOne(id: number): Promise<Court>;
+    updateStatus(id: number, status: string): Promise<Court>;
     update(id: number, updateCourtDto: UpdateCourtDto): Promise<Court>;
     remove(id: number): Promise<void>;
     getReservationsForDate(date: Date): Promise<Reservation[]>;

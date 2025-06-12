@@ -21,8 +21,15 @@ let ReservationsController = class ReservationsController {
     constructor(reservationsService) {
         this.reservationsService = reservationsService;
     }
-    create(createReservationDto) {
-        return this.reservationsService.create(createReservationDto);
+    async create(createReservationDto) {
+        try {
+            console.log('Received reservation data:', JSON.stringify(createReservationDto, null, 2));
+            return await this.reservationsService.create(createReservationDto);
+        }
+        catch (error) {
+            console.error('Error creating reservation:', error);
+            throw new common_1.BadRequestException('Invalid reservation data');
+        }
     }
     findAll() {
         return this.reservationsService.findAll();
@@ -61,10 +68,11 @@ let ReservationsController = class ReservationsController {
 exports.ReservationsController = ReservationsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true, whitelist: true })),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [create_reservation_dto_1.CreateReservationDto]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], ReservationsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)(),

@@ -20,23 +20,29 @@ class PlayerDto {
 }
 exports.PlayerDto = PlayerDto;
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], PlayerDto.prototype, "firstName", void 0);
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], PlayerDto.prototype, "lastName", void 0);
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], PlayerDto.prototype, "rut", void 0);
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsNumber)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], PlayerDto.prototype, "age", void 0);
 class CreateReservationDto {
@@ -48,30 +54,37 @@ class CreateReservationDto {
 }
 exports.CreateReservationDto = CreateReservationDto;
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsInt)(),
     (0, class_validator_1.IsPositive)(),
     (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateReservationDto.prototype, "courtId", void 0);
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsInt)(),
     (0, class_validator_1.IsPositive)(),
     (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], CreateReservationDto.prototype, "userId", void 0);
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsISO8601)(),
     __metadata("design:type", String)
 ], CreateReservationDto.prototype, "startTime", void 0);
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsISO8601)(),
     __metadata("design:type", String)
 ], CreateReservationDto.prototype, "endTime", void 0);
 __decorate([
+    (0, class_transformer_1.Expose)(),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => PlayerDto),

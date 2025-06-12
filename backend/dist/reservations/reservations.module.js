@@ -15,6 +15,7 @@ const reservation_entity_1 = require("./entities/reservation.entity");
 const court_entity_1 = require("../courts/entities/court.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const player_entity_1 = require("./entities/player.entity");
+const email_module_1 = require("../email/email.module");
 let ReservationsModule = class ReservationsModule {
 };
 exports.ReservationsModule = ReservationsModule;
@@ -22,6 +23,7 @@ exports.ReservationsModule = ReservationsModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([reservation_entity_1.Reservation, court_entity_1.Court, user_entity_1.User, player_entity_1.Player]),
+            email_module_1.EmailModule,
         ],
         providers: [reservations_service_1.ReservationsService],
         controllers: [reservations_controller_1.ReservationsController],

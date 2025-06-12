@@ -6,10 +6,12 @@ import { Reservation } from './entities/reservation.entity';
 import { Court } from '../courts/entities/court.entity';
 import { User } from '../users/entities/user.entity';
 import { Player } from './entities/player.entity';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Reservation, Court, User, Player]),
+    EmailModule,
   ],
   providers: [ReservationsService],
   controllers: [ReservationsController],

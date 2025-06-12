@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query, ValidationPipe, UsePipes, BadRequestException } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 
@@ -7,8 +7,15 @@ export class ReservationsController {
     constructor(private readonly reservationsService: ReservationsService) {}
 
     @Post()
-    create(@Body() createReservationDto: CreateReservationDto) {
-        return this.reservationsService.create(createReservationDto);
+    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+    async create(@Body() createReservationDto: CreateReservationDto) {
+        try {
+            console.log('Received reservation data:', JSON.stringify(createReservationDto, null, 2));
+            return await this.reservationsService.create(createReservationDto);
+        } catch (error) {
+            console.error('Error creating reservation:', error);
+            throw new BadRequestException('Invalid reservation data');
+        }
     }
 
     @Get()

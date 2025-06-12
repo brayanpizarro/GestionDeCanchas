@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 @Controller('users')
 export class UsersController {// Este controlador maneja las rutas relacionadas con los usuarios
@@ -21,6 +22,13 @@ export class UsersController {// Este controlador maneja las rutas relacionadas 
   @Get(':id')// Obtener un usuario por ID
   findOne(@Param('id') id: number) {// Recibe el ID del usuario desde los parámetros de la solicitud
     return this.usersService.findOne(id);// Llama al servicio de usuarios para obtener el usuario por ID
+  }
+
+  @Patch('password')
+  async updatePassword(@Body() dto: UpdatePasswordDto){
+    const { id, currentPassword, newPassword } = dto;
+    await this.usersService.updatePassword(id, currentPassword, newPassword);
+    return {message: 'Contraseña actualizada exitosamente.'}
   }
 
   @Patch(':id')// Actualizar un usuario por ID
