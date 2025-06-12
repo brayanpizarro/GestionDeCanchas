@@ -1,0 +1,125 @@
+import { Logger } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+// Log environment variables to check if they are loaded
+Logger.log(
+  `EMAIL_USER environment variable: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`,
+);
+Logger.log(
+  `EMAIL_PASSWORD environment variable: ${process.env.EMAIL_PASSWORD ? 'Loaded' : 'Not loaded'}`,
+);
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
+transporter.verify(function (error) {
+  if (error) {
+    Logger.error('Error verifying transporter:', error);
+  } else {
+    Logger.log('Server is ready to take our messages');
+  }
+});
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  text: string,
+): Promise<void> {
+  try {
+    Logger.log(
+      `Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`,
+    );
+
+    const info = await transporter.sendMail({
+      from: 'Soporte.CanchasUCENIN@gmail.com',
+      to,
+      subject,
+      text,
+    });
+
+    Logger.log(`Email sent: ${info.messageId}`);
+  } catch (error) {
+    Logger.error(
+      `Error sending email: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+export async function sendPasswordResetCode(
+  email: string,
+  code: string,
+  userName: string,
+): Promise<void> {
+  try {
+    // Log environment variables before sending password reset code
+    Logger.log(
+      `Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`,
+    );
+
+    const mailOptions = {
+      from: '"Soporte UCENIN" <${process.env.EMAIL_USER}>',
+      to: email,
+      subject: 'Código de restablecimiento de contraseña - UCENIN',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Hola ${userName},</h2>
+          <p>Has solicitado restablecer tu contraseña. Tu código de verificación es:</p>
+          <div style="background-color: #f0f0f0; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 2px; margin: 20px 0;">
+            ${code}
+          </div>
+          <p>Este código expira en 5 minutos.</p>
+          <p>Si no solicitaste este cambio, puedes ignorar este correo.</p>
+          <p>Saludos,<br>Equipo UCENIN</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    Logger.log(`Password reset code sent to: ${email}`);
+  } catch (error) {
+    Logger.error(
+      `Error sending password reset code: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+export async function sendPasswordResetConfirmation(
+  email: string,
+  userName: string,
+): Promise<void> {
+  try {
+    // Log environment variables before sending confirmation
+    Logger.log(
+      `Using EMAIL_USER: ${process.env.EMAIL_USER ? 'Loaded' : 'Not loaded'}`,
+    );
+
+    const mailOptions = {
+      from: '"Soporte UCENIN" <${process.env.EMAIL_USER}>',
+      to: email,
+      subject: 'Contraseña actualizada - UCENIN',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Hola ${userName},</h2>
+          <p>Tu contraseña ha sido actualizada exitosamente.</p>
+          <p>Si no realizaste este cambio, contacta inmediatamente con administración.</p>
+          <p>Saludos,<br>Equipo UCENIN</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    Logger.log(`Password reset confirmation sent to: ${email}`);
+  } catch (error) {
+    Logger.error(
+      `Error sending password reset confirmation: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}

@@ -1,165 +1,98 @@
-// services/forgotPasswordService.ts
+const API_URL = "http://localhost:3001/api/v1/auth"
+
 export interface ForgotPasswordRequest {
-  email: string;
+  email: string
 }
 
-export interface VerifyResetCodeRequest {
-  email: string;
-  code: string;
+export interface VerifyCodeRequest {
+  email: string
+  code: string
 }
 
 export interface ResetPasswordRequest {
-  email: string;
-  code: string;
-  newPassword: string;
+  email: string
+  code: string
+  newPassword: string
 }
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  message: string;
-  data?: T;
+export interface ForgotPasswordResponse {
+  message: string
+  success: boolean
 }
 
 class ForgotPasswordService {
-  private readonly baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001;
-
-  private async makeRequest<T>(
-    endpoint: string, 
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
-    body?: any
-  ): Promise<ApiResponse<T>> {
+  async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
     try {
-      const config: RequestInit = {
-        method,
+      console.log("Sending request to:", `${API_URL}/forgot-password`)
+      console.log("With email:", email)
+
+      const response = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-      };
+        body: JSON.stringify({ email }),
+      })
 
-      if (body && method !== 'GET') {
-        config.body = JSON.stringify(body);
-      }
+      console.log("Response status:", response.status)
+      console.log("Response ok:", response.ok)
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, config);
-      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        const errorText = await response.text()
+        console.error("Error response:", errorText)
+        throw new Error(errorText || "Error al solicitar recuperación de contraseña")
       }
 
-      const data = await response.json();
-      return data;
+      const data = await response.json()
+      console.log("Success response:", data)
+      return data
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
+      console.error("Error in requestPasswordReset:", error)
+      throw error
+    }
+  }
+
+  async verifyResetCode(email: string, code: string): Promise<ForgotPasswordResponse> {
+    try {
+      const response = await fetch(`${API_URL}/verify-reset-code`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, code }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.message || "Código de verificación inválido")
       }
-      throw new Error('Error de conexión');
+      return data
+    } catch (error) {
+      console.error("Error verifying reset code:", error)
+      throw error
     }
   }
 
-  /**
-   * Solicitar código de restablecimiento de contraseña
-   */
-  async requestPasswordReset(email: string): Promise<ApiResponse> {
-    const payload: ForgotPasswordRequest = { email };
-    return this.makeRequest('/api/v1/auth/forgot-password', 'POST', payload);
-  }
+  async resetPassword(email: string, code: string, newPassword: string): Promise<ForgotPasswordResponse> {
+    try {
+      const response = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, code, newPassword }),
+      })
 
-  /**
-   * Verificar código de restablecimiento
-   */
-  async verifyResetCode(email: string, code: string): Promise<ApiResponse> {
-    const payload: VerifyResetCodeRequest = { email, code };
-    return this.makeRequest('/api/v1/auth/verify-reset-code', 'POST', payload);
-  }
-
-  /**
-   * Restablecer contraseña
-   */
-  async resetPassword(email: string, code: string, newPassword: string): Promise<ApiResponse> {
-    const payload: ResetPasswordRequest = { email, code, newPassword };
-    return this.makeRequest('/api/v1/auth/reset-password', 'POST', payload);
-  }
-
-  /**
-   * Reenviar código de verificación
-   */
-  async resendCode(email: string): Promise<ApiResponse> {
-    return this.requestPasswordReset(email);
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.message || "Error al restablecer la contraseña")
+      }
+      return data
+    } catch (error) {
+      console.error("Error resetting password:", error)
+      throw error
+    }
   }
 }
 
-// Singleton instance
-export const forgotPasswordService = new ForgotPasswordService();
-
-// Hook personalizado para React (opcional)
-import { useState, useCallback } from 'react';
-
-export interface UseForgotPasswordReturn {
-  requestReset: (email: string) => Promise<void>;
-  verifyCode: (email: string, code: string) => Promise<void>;
-  resetPassword: (email: string, code: string, newPassword: string) => Promise<void>;
-  isLoading: boolean;
-  error: string | null;
-  clearError: () => void;
-}
-
-export const useForgotPassword = (): UseForgotPasswordReturn => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  const requestReset = useCallback(async (email: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      await forgotPasswordService.requestPasswordReset(email);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const verifyCode = useCallback(async (email: string, code: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      await forgotPasswordService.verifyResetCode(email, code);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const resetPassword = useCallback(async (email: string, code: string, newPassword: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      await forgotPasswordService.resetPassword(email, code, newPassword);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  return {
-    requestReset,
-    verifyCode,
-    resetPassword,
-    isLoading,
-    error,
-    clearError,
-  };
-};
+export const forgotPasswordService = new ForgotPasswordService()

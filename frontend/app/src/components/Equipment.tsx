@@ -1,4 +1,5 @@
 import React from 'react';
+import {Link} from "react-router-dom";
 
 const Equipment: React.FC = () => {
   return (
@@ -18,10 +19,10 @@ const Equipment: React.FC = () => {
             Si no tienes equipamiento, no te preocupes. Nos puedes pedir!!
           </h2>
           
-          <button className="mt-6 inline-flex items-center bg-white hover:bg-gray-100 text-[#0A1838] px-6 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:shadow-lg">
+          <Link to="/reservation" className="mt-6 inline-flex items-center bg-white hover:bg-gray-100 text-[#0A1838] px-6 py-3 rounded-full text-lg font-medium transition-all duration-300 hover:shadow-lg">
             <span className="mr-2">🎾</span>
             reserva los equipamientos aquí
-          </button>
+          </Link>
         </div>
       </div>
     </section>

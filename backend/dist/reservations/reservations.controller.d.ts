@@ -1,0 +1,15 @@
+import { ReservationsService } from './reservations.service';
+import { CreateReservationDto } from './dto/create-reservation.dto';
+export declare class ReservationsController {
+    private readonly reservationsService;
+    constructor(reservationsService: ReservationsService);
+    create(createReservationDto: CreateReservationDto): Promise<import("./entities/reservation.entity").Reservation>;
+    findAll(): Promise<import("./entities/reservation.entity").Reservation[]>;
+    findByUser(userId: number): Promise<import("./entities/reservation.entity").Reservation[]>;
+    findOne(id: number): Promise<import("./entities/reservation.entity").Reservation>;
+    updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<import("./entities/reservation.entity").Reservation>;
+    getAvailableTimeSlots(courtId: number, date: string): Promise<{
+        startTime: Date;
+        endTime: Date;
+    }[]>;
+}

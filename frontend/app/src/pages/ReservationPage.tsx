@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import CourtCard from '../components/CourtCard';
@@ -60,6 +60,24 @@ const ReservationPage: React.FC = () => {
     const [equipment, setEquipment] = useState<Equipment[]>([]);
     const [dataLoading, setDataLoading] = useState(true);
 
+    // Referencias para el auto-scroll
+    const courtsRef = useRef<HTMLDivElement>(null);
+    const equipmentRef = useRef<HTMLDivElement>(null);
+    const playersRef = useRef<HTMLDivElement>(null);
+    const summaryRef = useRef<HTMLDivElement>(null);
+
+    // Función para hacer scroll suave hacia una sección
+    const scrollToSection = (ref: React.RefObject<HTMLDivElement>, delay: number = 500) => {
+        setTimeout(() => {
+            if (ref.current) {
+                ref.current.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }, delay);
+    };
+
     // Cargar datos desde la base de datos al inicializar el componente
     useEffect(() => {
         const loadInitialData = async () => {
@@ -68,13 +86,14 @@ const ReservationPage: React.FC = () => {
                 
                 // Cargar canchas desde la API
                 const courtsResponse = await fetch('http://localhost:3001/api/v1/courts');
-                if (courtsResponse.ok) {                    const courtsData = await courtsResponse.json();
+                if (courtsResponse.ok) {                    
+                    const courtsData = await courtsResponse.json();
                     setCourts(courtsData.map((court: { id: number; name: string; description?: string; pricePerHour: number; status: string; capacity: number }) => ({
                         id: court.id,
                         name: court.name,
                         description: court.description || "",
                         price: parseFloat(court.pricePerHour),
-                        imagePath: court.imagePath, // Añade imagen por defecto
+                        imagePath: court.imagePath,
                         available: court.status === "available",
                         maxPlayers: court.capacity
                     })));
@@ -110,10 +129,16 @@ const ReservationPage: React.FC = () => {
         setSelectedDuration(duration);
         setSelectedTimeSlot(timeSlot);
         setSelectedCourt(null);
+        
+        // Auto-scroll hacia la sección de canchas
+        scrollToSection(courtsRef, 300);
     };
 
     const handleCourtSelect = (courtId: number) => {
         setSelectedCourt(courtId);
+        
+        // Auto-scroll hacia la sección de equipamiento
+        scrollToSection(equipmentRef, 300);
     };
 
     const toggleEquipment = (equipmentId: string) => {
@@ -122,6 +147,16 @@ const ReservationPage: React.FC = () => {
                 ? prev.filter(id => id !== equipmentId)
                 : [...prev, equipmentId]
         );
+    };
+
+    const handleEquipmentDecision = (needsEq: boolean) => {
+        setNeedsEquipment(needsEq);
+        if (!needsEq) {
+            setSelectedEquipment([]);
+        }
+        
+        // Auto-scroll hacia la sección de jugadores
+        scrollToSection(playersRef, 300);
     };
 
     const calculateTotal = () => {
@@ -155,6 +190,11 @@ const ReservationPage: React.FC = () => {
         setPlayers([...players, currentPlayer]);
         setCurrentPlayer({ firstName: '', lastName: '', rut: '', age: 0 });
         setShowPlayerForm(false);
+        
+        // Si es el primer jugador agregado, hacer scroll al resumen
+        if (players.length === 0) {
+            scrollToSection(summaryRef, 300);
+        }
     };
 
     const handleDeletePlayer = (index: number) => {
@@ -238,7 +278,7 @@ const ReservationPage: React.FC = () => {
                         <button
                             key={index}
                             onClick={() => handleTimeSelect(timeString, selectedDuration, slot)}
-                            className={`p-2 rounded ${
+                            className={`p-2 rounded transition-all duration-200 ${
                                 selectedTime === timeString
                                     ? 'bg-[#071d40] text-white'
                                     : 'bg-gray-100 hover:bg-gray-200'
@@ -275,7 +315,7 @@ const ReservationPage: React.FC = () => {
                         onClick={() => handleCourtSelect(court.id)}
                         className={`${
                             selectedCourt === court.id ? 'ring-2 ring-blue-500' : ''
-                        } cursor-pointer hover:shadow-lg transition-shadow duration-200`}
+                        } cursor-pointer hover:shadow-lg transition-all duration-200`}
                     >
                         <CourtCard {...court} />
                         <div className="mt-2 px-4 py-2 bg-gray-50 rounded-b-lg">
@@ -317,7 +357,9 @@ const ReservationPage: React.FC = () => {
             
             const endTime = selectedTimeSlot.endTime instanceof Date 
                 ? selectedTimeSlot.endTime 
-                : new Date(selectedTimeSlot.endTime);            // Prepare reservation data with properly formatted player data
+                : new Date(selectedTimeSlot.endTime);            
+                
+            // Prepare reservation data with properly formatted player data
             const reservationData: CreateReservationDto = {
                 courtId: selectedCourt,
                 userId: user.id,
@@ -374,11 +416,12 @@ const ReservationPage: React.FC = () => {
                 <div className="container mx-auto">
                     <div className="mb-10 relative">
                         <h1 className="text-3xl md:text-4xl font-bold text-[#071d40] mb-2">
-                            Reserva tu cancha
+                            Reserva tu cancha y equipamiento
                         </h1>
                         <div className="absolute bottom-0 left-0 w-20 h-1 bg-[#071d40] rounded-full"></div>
                     </div>
 
+                    {/* Sección 1: Fecha y Hora */}
                     <div className="mb-8">
                         <h2 className="text-xl font-semibold text-[#071d40] mb-4">1. Selecciona fecha y hora</h2>
                         <div className="mb-4">
@@ -393,8 +436,9 @@ const ReservationPage: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Sección 2: Canchas */}
                     {selectedTime && (
-                        <div className="mb-8">
+                        <div ref={courtsRef} className="mb-8 scroll-mt-32">
                             <h2 className="text-xl font-semibold text-[#071d40] mb-4">
                                 2. Canchas disponibles para {selectedDate.toLocaleDateString()} a las {selectedTime} ({selectedDuration} min)
                             </h2>
@@ -402,14 +446,15 @@ const ReservationPage: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Sección 3: Equipamiento */}
                     {selectedCourt && (
-                        <div className="mb-8">
+                        <div ref={equipmentRef} className="mb-8 scroll-mt-32">
                             <h2 className="text-xl font-semibold text-[#071d40] mb-4">3. ¿Necesitas equipamiento?</h2>
                             <div className="space-y-4">
                                 <div className="flex items-center space-x-4">
                                     <button
-                                        onClick={() => setNeedsEquipment(true)}
-                                        className={`px-6 py-3 rounded-md ${
+                                        onClick={() => handleEquipmentDecision(true)}
+                                        className={`px-6 py-3 rounded-md transition-all duration-200 ${
                                             needsEquipment
                                                 ? 'bg-[#071d40] text-white'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -418,11 +463,8 @@ const ReservationPage: React.FC = () => {
                                         Sí, necesito equipamiento
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            setNeedsEquipment(false);
-                                            setSelectedEquipment([]);
-                                        }}
-                                        className={`px-6 py-3 rounded-md ${
+                                        onClick={() => handleEquipmentDecision(false)}
+                                        className={`px-6 py-3 rounded-md transition-all duration-200 ${
                                             !needsEquipment
                                                 ? 'bg-[#071d40] text-white'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -462,13 +504,14 @@ const ReservationPage: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Sección 4: Jugadores */}
                     {selectedCourt && (
-                        <div className="mb-8">
+                        <div ref={playersRef} className="mb-8 scroll-mt-32">
                             <h2 className="text-xl font-semibold text-[#071d40] mb-4">4. Agregar jugadores</h2>
                             <div className="space-y-4">
                                 <button
                                     onClick={() => setShowPlayerForm(true)}
-                                    className="bg-[#071d40] text-white px-6 py-3 rounded-md"
+                                    className="bg-[#071d40] text-white px-6 py-3 rounded-md transition-all duration-200 hover:bg-[#122e5e]"
                                 >
                                     Agregar Jugador
                                 </button>
@@ -526,14 +569,14 @@ const ReservationPage: React.FC = () => {
                                         <div className="flex space-x-2">
                                             <button
                                                 type="submit"
-                                                className="bg-[#071d40] text-white px-6 py-3 rounded-md"
+                                                className="bg-[#071d40] text-white px-6 py-3 rounded-md transition-all duration-200 hover:bg-[#122e5e]"
                                             >
                                                 Agregar
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setShowPlayerForm(false)}
-                                                className="bg-gray-300 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-400"
+                                                className="bg-gray-300 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-400 transition-all duration-200"
                                             >
                                                 Cancelar
                                             </button>
@@ -553,7 +596,7 @@ const ReservationPage: React.FC = () => {
                                                     </span>
                                                     <button
                                                         onClick={() => handleDeletePlayer(index)}
-                                                        className="text-red-500 hover:text-red-700 font-medium"
+                                                        className="text-red-500 hover:text-red-700 font-medium transition-colors duration-200"
                                                     >
                                                         Eliminar
                                                     </button>
@@ -566,8 +609,9 @@ const ReservationPage: React.FC = () => {
                         </div>
                     )}
 
+                    {/* Sección 5: Resumen */}
                     {selectedCourt && (
-                        <div className="bg-white rounded-lg shadow-md p-6">
+                        <div ref={summaryRef} className="bg-white rounded-lg shadow-md p-6 scroll-mt-32">
                             <h3 className="text-lg font-semibold text-[#071d40] mb-4">Resumen de tu reserva</h3>
 
                             <div className="space-y-4 mb-6">

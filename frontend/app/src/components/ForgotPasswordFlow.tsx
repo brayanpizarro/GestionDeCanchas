@@ -1,6 +1,109 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Mail, Lock, Shield, CheckCircle, AlertCircle } from 'lucide-react';
 
+// Configuración de API
+const API_URL = "http://localhost:3001/api/v1/auth";
+
+// Interfaces
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface VerifyCodeRequest {
+  email: string;
+  code: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+  success: boolean;
+}
+
+// Servicio de API
+class ForgotPasswordService {
+  async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
+    try {
+      console.log("Sending request to:", `${API_URL}/forgot-password`);
+      console.log("With email:", email);
+
+      const response = await fetch(`${API_URL}/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        throw new Error(errorText || "Error al solicitar recuperación de contraseña");
+      }
+
+      const data = await response.json();
+      console.log("Success response:", data);
+      return data;
+    } catch (error) {
+      console.error("Error in requestPasswordReset:", error);
+      throw error;
+    }
+  }
+
+  async verifyResetCode(email: string, code: string): Promise<ForgotPasswordResponse> {
+    try {
+      const response = await fetch(`${API_URL}/verify-reset-code`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, code }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Código de verificación inválido");
+      }
+      return data;
+    } catch (error) {
+      console.error("Error verifying reset code:", error);
+      throw error;
+    }
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<ForgotPasswordResponse> {
+    try {
+      const response = await fetch(`${API_URL}/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, code, newPassword }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Error al restablecer la contraseña");
+      }
+      return data;
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      throw error;
+    }
+  }
+}
+
+const forgotPasswordService = new ForgotPasswordService();
+
+// Props del componente
 interface ForgotPasswordFlowProps {
   onBackToLogin: () => void;
   onSuccess: () => void;
@@ -24,55 +127,6 @@ export const ForgotPasswordFlow: React.FC<ForgotPasswordFlowProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [timer, setTimer] = useState(0);
-
-  // Simulación de llamadas API - reemplaza con tus servicios reales
-  const requestPasswordReset = async (email: string) => {
-    // Aquí llamarías a tu API: /auth/forgot-password
-    const response = await fetch('/api/v1/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Error al enviar el código');
-    }
-    
-    return response.json();
-  };
-
-  const verifyResetCode = async (email: string, code: string) => {
-    // Aquí llamarías a tu API: /auth/verify-reset-code
-    const response = await fetch('/api/v1/auth/verify-reset-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Código inválido');
-    }
-    
-    return response.json();
-  };
-
-  const resetPassword = async (email: string, code: string, newPassword: string) => {
-    // Aquí llamarías a tu API: /auth/reset-password
-    const response = await fetch('/api/v1/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, code, newPassword })
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Error al cambiar la contraseña');
-    }
-    
-    return response.json();
-  };
 
   const validateEmail = (email: string) => {
     if (!email) return 'El correo es requerido';
@@ -105,8 +159,8 @@ export const ForgotPasswordFlow: React.FC<ForgotPasswordFlowProps> = ({
 
     setIsLoading(true);
     try {
-      await requestPasswordReset(email);
-      setCurrentStep('verify');
+      await forgotPasswordService.requestPasswordReset(email);
+      setCurrentStep('verify'); // Cambiar a 'verify' después del éxito
       setTimer(300); // 5 minutos
       
       // Iniciar countdown
@@ -137,8 +191,8 @@ export const ForgotPasswordFlow: React.FC<ForgotPasswordFlowProps> = ({
 
     setIsLoading(true);
     try {
-      await verifyResetCode(email, code);
-      setCurrentStep('reset');
+      await forgotPasswordService.verifyResetCode(email, code);
+      setCurrentStep('reset'); // Cambiar a 'reset' después del éxito
     } catch (error: any) {
       setErrors({ api: error.message });
     } finally {
@@ -162,8 +216,8 @@ export const ForgotPasswordFlow: React.FC<ForgotPasswordFlowProps> = ({
 
     setIsLoading(true);
     try {
-      await resetPassword(email, code, newPassword);
-      setCurrentStep('success');
+      await forgotPasswordService.resetPassword(email, code, newPassword);
+      setCurrentStep('success'); // Cambiar a 'success' después del éxito
       setTimeout(() => {
         onSuccess();
       }, 3000);
@@ -220,11 +274,9 @@ export const ForgotPasswordFlow: React.FC<ForgotPasswordFlowProps> = ({
         </button>
       </div>
 
-      
       <div className="flex justify-center mb-4">
         <img src="/assets/imagenes/LogoUcn.jpeg" alt="Logo UCENIN" className="h-16 w-16 object-contain" />
       </div>
-      
 
       {renderStepIndicator()}
 
