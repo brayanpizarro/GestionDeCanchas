@@ -43,6 +43,24 @@ let UsersController = class UsersController {
     remove(id) {
         return this.usersService.remove(id);
     }
+    async getBalance(id) {
+        const balance = await this.usersService.getBalance(id);
+        return { balance };
+    }
+    async addBalance(id, body) {
+        const user = await this.usersService.addBalance(id, body.amount);
+        return {
+            message: 'Saldo agregado exitosamente',
+            newBalance: user.balance
+        };
+    }
+    async setBalance(id, body) {
+        const user = await this.usersService.setBalance(id, body.amount);
+        return {
+            message: 'Saldo establecido exitosamente',
+            newBalance: user.balance
+        };
+    }
 };
 exports.UsersController = UsersController;
 __decorate([
@@ -87,6 +105,29 @@ __decorate([
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "remove", null);
+__decorate([
+    (0, common_1.Get)(':id/balance'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "getBalance", null);
+__decorate([
+    (0, common_1.Post)(':id/balance/add'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "addBalance", null);
+__decorate([
+    (0, common_1.Post)(':id/balance/set'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], UsersController.prototype, "setBalance", null);
 exports.UsersController = UsersController = __decorate([
     (0, common_1.Controller)('users'),
     __metadata("design:paramtypes", [users_service_1.UsersService])

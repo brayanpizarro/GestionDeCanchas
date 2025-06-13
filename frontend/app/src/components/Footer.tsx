@@ -1,8 +1,27 @@
 import React from 'react';
 import { Mail, Instagram, Phone } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const Footer: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavigation = (sectionId: string) => {
+    if (location.pathname === '/') {
+      // Si ya estamos en la página de inicio, hacer scroll
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    } else {
+      // Si estamos en otra página, navegar al inicio con hash
+      navigate(`/#${sectionId}`);
+    }
+  };
+
   return (
       <footer className="bg-[#0A1838] text-white py-10 px-4">
         <div className="container mx-auto px-6 flex flex-col md:flex-row md:justify-between gap-8">
@@ -20,23 +39,40 @@ const Footer: React.FC = () => {
             <h3 className="text-xl font-semibold mb-4">Enlaces Rápidos</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/" className="text-gray-300 hover:text-white transition">
+                <button 
+                  onClick={() => handleNavigation('inicio')}
+                  className="text-gray-300 hover:text-white transition text-left"
+                >
                   Inicio
-                </Link>
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('caracteristicas')}
+                  className="text-gray-300 hover:text-white transition text-left"
+                >
+                  Características
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('equipamiento')}
+                  className="text-gray-300 hover:text-white transition text-left"
+                >
+                  Equipamiento
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('ubicacion')}
+                  className="text-gray-300 hover:text-white transition text-left"
+                >
+                  Ubicación
+                </button>
               </li>
               <li>
                 <Link to="/reservation" className="text-gray-300 hover:text-white transition">
                   Reservar
-                </Link>
-              </li>
-              <li>
-                <Link to="/equipamiento" className="text-gray-300 hover:text-white transition">
-                  Equipamiento
-                </Link>
-              </li>
-              <li>
-                <Link to="/ubicacion" className="text-gray-300 hover:text-white transition">
-                  Ubicación
                 </Link>
               </li>
             </ul>

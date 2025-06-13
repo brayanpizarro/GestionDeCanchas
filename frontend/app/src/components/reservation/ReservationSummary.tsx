@@ -3,6 +3,7 @@
 import type React from "react"
 import { Calendar, Clock, Users, Package, DollarSign } from "lucide-react"
 import type { ReservationSummary } from "../../types/reservation"
+import { formatChileanCurrency } from "../../utils/currency"
 
 interface ReservationSummaryProps {
     summary: ReservationSummary
@@ -31,7 +32,7 @@ const ReservationSummaryComponent: React.FC<ReservationSummaryProps> = ({ summar
                 <div>
                 <p className="text-xs sm:text-sm text-gray-500">Cancha seleccionada</p>
                 <p className="font-medium text-gray-900 text-sm sm:text-base">{court.name}</p>
-                <p className="text-xs sm:text-sm text-gray-600">${court.price.toLocaleString()}/hora</p>
+                <p className="text-xs sm:text-sm text-gray-600">{formatChileanCurrency(court.price)}/hora</p>
                 </div>
             </div>
             )}
@@ -108,7 +109,7 @@ const ReservationSummaryComponent: React.FC<ReservationSummaryProps> = ({ summar
         <div className="border-t pt-3 sm:pt-4 mb-4 sm:mb-6">
             <div className="flex justify-between items-center">
             <span className="text-base sm:text-lg font-semibold text-gray-900">Total</span>
-            <span className="text-xl sm:text-2xl font-bold text-[#071d40]">${total.toLocaleString()}</span>
+            <span className="text-xl sm:text-2xl font-bold text-[#071d40]">{formatChileanCurrency(total)}</span>
             </div>
         </div>
 

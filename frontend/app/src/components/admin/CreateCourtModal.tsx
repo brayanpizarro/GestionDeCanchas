@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X } from "lucide-react"
 import type { CreateCourtFormData } from "../../types"
 
@@ -9,9 +9,17 @@ interface CreateCourtModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: CreateCourtFormData) => Promise<void>
+  editData?: CreateCourtFormData
+  isEditing?: boolean
 }
 
-const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, onSubmit }) => {
+const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  editData,
+  isEditing = false 
+}) => {
   const [formData, setFormData] = useState<CreateCourtFormData>({
     name: "",
     type: "covered",
@@ -21,6 +29,21 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
+
+  // Effect to populate form with edit data
+  useEffect(() => {
+    if (isEditing && editData) {
+      setFormData(editData)
+    } else if (!isEditing) {
+      setFormData({
+        name: "",
+        type: "covered",
+        status: "available",
+        capacity: 4,
+        pricePerHour: 0,
+      })
+    }
+  }, [isEditing, editData, isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,9 +59,9 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
         capacity: 4,
         pricePerHour: 0,
       })
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear la cancha")
+      onClose()    } catch (err) {
+      setError(err instanceof Error ? err.message : 
+        `Error al ${isEditing ? 'actualizar' : 'crear'} la cancha`)
     } finally {
       setIsSubmitting(false)
     }
@@ -57,7 +80,9 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Nueva Cancha</h2>
+          <h2 className="text-xl font-semibold">
+            {isEditing ? "Editar Cancha" : "Nueva Cancha"}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
           </button>
@@ -137,7 +162,10 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({ isOpen, onClose, on
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
             >
-              {isSubmitting ? "Creando..." : "Crear Cancha"}
+              {isSubmitting 
+                ? (isEditing ? "Actualizando..." : "Creando...") 
+                : (isEditing ? "Actualizar Cancha" : "Crear Cancha")
+              }
             </button>
           </div>
         </form>

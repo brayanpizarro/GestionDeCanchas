@@ -25,4 +25,8 @@ export declare class UsersService {
         avatar: string;
     }[]>;
     private calculateLevel;
+    addBalance(userId: number, amount: number): Promise<User>;
+    deductBalance(userId: number, amount: number): Promise<User>;
+    getBalance(userId: number): Promise<number>;
+    setBalance(userId: number, amount: number): Promise<User>;
 }

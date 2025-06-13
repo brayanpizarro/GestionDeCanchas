@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
 import { Reservation } from './entities/reservation.entity';
 import { Court } from '../courts/entities/court.entity';
 import { User } from '../users/entities/user.entity';
@@ -8,7 +8,8 @@ import { Player } from './entities/player.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { EmailService } from '../email/email.service';
+import { sendReservationConfirmation } from '../utils/email.utils';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ReservationsService {
@@ -21,7 +22,8 @@ export class ReservationsService {
         private readonly usersRepository: Repository<User>,
         @InjectRepository(Player)
         private readonly playersRepository: Repository<Player>,
-        private readonly emailService: EmailService
+        @Inject(forwardRef(() => UsersService))
+        private readonly usersService: UsersService
     ) {}
 
     async create(rawDto: unknown): Promise<Reservation> {
@@ -113,28 +115,76 @@ export class ReservationsService {
 
         const finalReservation = await this.reservationsRepository.save(savedReservation);
 
-        // Enviar email de confirmación
-        try {
-            const duration = (endDate.getTime() - startDate.getTime()) / (1000 * 60); // duración en minutos
-            await this.emailService.sendReservationConfirmation(
-                user.email,
-                user.name,
-                {
-                    id: finalReservation.id,
-                    courtName: court.name,
-                    date: startDate.toISOString(),
-                    startTime: startDate.toISOString(),
-                    endTime: endDate.toISOString(),
-                    duration: Math.round(duration),
-                    players: players.map(p => `${p.firstName} ${p.lastName}`)
-                }
-            );
-        } catch (emailError) {
-            console.error('Error enviando email de confirmación:', emailError);
-            // No lanzamos el error para no afectar la creación de la reserva
-        }
+        // El email se enviará cuando se confirme el pago, no al crear la reserva
+        console.log('🎯 Reserva creada con estado pendiente. Email se enviará tras confirmación de pago.');
 
         return finalReservation;
+    }
+
+    async processPayment(reservationId: number, userId: number): Promise<{ success: boolean; message: string }> {
+        // Buscar la reserva con todas las relaciones necesarias
+        const reservation = await this.reservationsRepository.findOne({
+            where: { id: reservationId },
+            relations: ['user', 'court', 'players']
+        });
+
+        if (!reservation) {
+            throw new NotFoundException('Reserva no encontrada');
+        }
+
+        if (reservation.userId !== userId) {
+            throw new BadRequestException('No tienes permiso para pagar esta reserva');
+        }
+
+        if (reservation.status !== 'pending') {
+            throw new BadRequestException('Esta reserva ya ha sido procesada');
+        }
+
+        const amount = parseFloat(reservation.amount.toString());
+
+        try {
+            // Deducir saldo del usuario
+            await this.usersService.deductBalance(userId, amount);
+
+            // Actualizar estado de la reserva
+            reservation.status = 'confirmed';
+            const confirmedReservation = await this.reservationsRepository.save(reservation);
+
+            // Enviar email de confirmación DESPUÉS del pago exitoso
+            try {
+                const duration = (reservation.endTime.getTime() - reservation.startTime.getTime()) / (1000 * 60);
+                await sendReservationConfirmation(
+                    reservation.user.email,
+                    reservation.user.name,
+                    {
+                        id: confirmedReservation.id,
+                        courtName: reservation.court.name,
+                        date: reservation.startTime.toISOString(),
+                        startTime: reservation.startTime.toISOString(),
+                        endTime: reservation.endTime.toISOString(),
+                        duration: Math.round(duration),
+                        players: reservation.players.map(p => `${p.firstName} ${p.lastName}`)
+                    }
+                );
+                console.log('✅ Email de confirmación enviado tras pago exitoso');
+            } catch (emailError) {
+                console.error('❌ Error enviando email de confirmación:', emailError);
+                // No lanzamos el error para no afectar el flujo de pago
+            }
+
+            return {
+                success: true,
+                message: 'Pago procesado exitosamente y confirmación enviada'
+            };
+        } catch (error) {
+            if (error instanceof Error && error.message === 'Saldo insuficiente') {
+                return {
+                    success: false,
+                    message: 'Saldo insuficiente para procesar el pago'
+                };
+            }
+            throw error;
+        }
     }
 
     private calculateAmount(court: Court, startTime: string, endTime: string): number {
@@ -145,9 +195,22 @@ export class ReservationsService {
     }
 
     async findAll(): Promise<Reservation[]> {
-        return await this.reservationsRepository.find({
+        console.log('🔍 Ejecutando findAll() en ReservationsService...');
+        const reservations = await this.reservationsRepository.find({
             relations: ['court', 'user', 'players'],
         });
+        console.log(`📊 findAll() encontró ${reservations.length} reservas`);
+        return reservations;
+    }
+
+    async findAllWithDeleted(): Promise<Reservation[]> {
+        console.log('🔍 Ejecutando findAllWithDeleted() - incluyendo eliminadas...');
+        const reservations = await this.reservationsRepository.find({
+            relations: ['court', 'user', 'players'],
+            withDeleted: true, // Incluir registros con deletedAt no nulo
+        });
+        console.log(`📊 findAllWithDeleted() encontró ${reservations.length} reservas (incluyendo eliminadas)`);
+        return reservations;
     }
 
     async getTotalCount(): Promise<number> {
@@ -204,6 +267,9 @@ export class ReservationsService {
         // Si se cancela la reserva, enviar email de notificación
         if (status === 'cancelled' && oldStatus !== 'cancelled') {
             try {
+                // TODO: Implementar función de cancelación en email utils
+                console.log('Reserva cancelada - email de notificación pendiente');
+                /*
                 await this.emailService.sendReservationCancellation(
                     reservation.user.email,
                     reservation.user.name,
@@ -216,6 +282,7 @@ export class ReservationsService {
                         cancellationReason: 'Cancelación solicitada por el usuario'
                     }
                 );
+                */
             } catch (emailError) {
                 console.error('Error enviando email de cancelación:', emailError);
             }
@@ -255,7 +322,7 @@ export class ReservationsService {
             where: {
                 court: { id: courtId },
                 startTime: Between(startOfDay, endOfDay),
-                status: 'confirmed',
+                status: In(['confirmed', 'pending']), // Incluir tanto confirmadas como pendientes
             },
             order: { startTime: 'ASC' },
         });
@@ -291,6 +358,93 @@ export class ReservationsService {
         }
 
         return availableTimeSlots;
+    }
+
+    async getTimeSlotsWithAvailability(
+        courtId: number,
+        date: string
+    ): Promise<Array<{ 
+        startTime: Date; 
+        endTime: Date; 
+        isAvailable: boolean; 
+        status?: 'confirmed' | 'pending';
+        reservationId?: number;
+    }>> {
+        if (!Number.isInteger(courtId) || courtId <= 0) {
+            throw new BadRequestException('Invalid court ID');
+        }
+
+        const court = await this.courtsRepository.findOneBy({ id: courtId });
+        if (!court) {
+            throw new NotFoundException(`Court with ID ${courtId} not found`);
+        }
+
+        const startOfDay = new Date(date);
+        if (isNaN(startOfDay.getTime())) {
+            throw new BadRequestException('Invalid date format');
+        }
+
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Obtener todas las reservas del día (confirmadas y pendientes)
+        const reservations = await this.reservationsRepository.find({
+            where: {
+                court: { id: courtId },
+                startTime: Between(startOfDay, endOfDay),
+                status: In(['confirmed', 'pending']),
+            },
+            order: { startTime: 'ASC' },
+        });
+
+        const timeSlots: Array<{ 
+            startTime: Date; 
+            endTime: Date; 
+            isAvailable: boolean; 
+            status?: 'confirmed' | 'pending';
+            reservationId?: number;
+        }> = [];
+
+        const slotDuration = 60; // duración en minutos
+        const openingTime = new Date(date);
+        openingTime.setHours(8, 0, 0, 0);
+        const closingTime = new Date(date);
+        closingTime.setHours(22, 0, 0, 0);
+
+        let currentSlot = new Date(openingTime);
+
+        while (currentSlot < closingTime) {
+            const slotEnd = new Date(currentSlot);
+            slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);
+
+            // Buscar si hay una reserva que ocupe este horario
+            const conflictingReservation = reservations.find(reservation => {
+                return (currentSlot >= reservation.startTime && currentSlot < reservation.endTime) ||
+                    (slotEnd > reservation.startTime && slotEnd <= reservation.endTime) ||
+                    (currentSlot <= reservation.startTime && slotEnd >= reservation.endTime);
+            });
+
+            if (conflictingReservation) {
+                timeSlots.push({
+                    startTime: new Date(currentSlot),
+                    endTime: new Date(slotEnd),
+                    isAvailable: false,
+                    status: conflictingReservation.status as 'confirmed' | 'pending',
+                    reservationId: conflictingReservation.id,
+                });
+            } else {
+                timeSlots.push({
+                    startTime: new Date(currentSlot),
+                    endTime: new Date(slotEnd),
+                    isAvailable: true,
+                });
+            }
+
+            currentSlot = new Date(slotEnd);
+        }
+
+        return timeSlots;
     }
 
 }

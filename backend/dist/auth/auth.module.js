@@ -35,7 +35,7 @@ exports.AuthModule = AuthModule = __decorate([
         ],
         controllers: [auth_controller_1.AuthController, forgot_password_controller_1.ForgotPasswordController],
         providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, forgot_password_service_1.ForgotPasswordService],
-        exports: [auth_service_1.AuthService, jwt_1.JwtModule, forgot_password_service_1.ForgotPasswordService],
+        exports: [auth_service_1.AuthService, jwt_1.JwtModule, jwt_strategy_1.JwtStrategy, forgot_password_service_1.ForgotPasswordService],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

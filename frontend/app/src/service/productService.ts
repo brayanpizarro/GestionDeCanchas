@@ -128,7 +128,6 @@ export class ProductService {
       throw error
     }
   }
-
   static async createProduct(productData: CreateProductFormData): Promise<Product> {
     try {
       // Validar datos del producto antes de enviar
@@ -200,6 +199,82 @@ export class ProductService {
       console.error("Error creating product:", error)
       
       // Si es un error de autenticación, no lo relanzamos después del manejo
+      if (error.message.includes("Sesión expirada")) {
+        return Promise.reject(error)
+      }
+      
+      throw error
+    }
+  }
+
+  static async updateProduct(productId: string, productData: CreateProductFormData): Promise<Product> {
+    try {
+      // Validar datos del producto antes de enviar
+      if (!productData.name || !productData.price || productData.stock === undefined) {
+        throw new Error("Datos del producto incompletos")
+      }
+
+      console.log('Actualizando producto:', productData.name)
+
+      const token = this.getValidToken()
+      
+      const formData = new FormData()
+      formData.append("name", productData.name.trim())
+      formData.append("description", productData.description?.trim() || "")
+      formData.append("price", productData.price.toString())
+      formData.append("stock", productData.stock.toString())
+      formData.append("available", productData.available.toString())
+      
+      if (productData.category && productData.category.trim()) {
+        formData.append("category", productData.category.trim())
+      }
+      
+      if (productData.imageFile) {
+        console.log(' Archivo a subir:', {
+          name: productData.imageFile.name,
+          type: productData.imageFile.type,  
+          size: productData.imageFile.size
+        });
+        formData.append("image", productData.imageFile)
+      }
+
+      const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      this.handleAuthError(response)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        let errorMessage = "Error al actualizar producto"
+        
+        try {
+          const errorJson = JSON.parse(errorText)
+          errorMessage = errorJson.message || errorMessage
+        } catch {
+          errorMessage = errorText || errorMessage
+        }
+        
+        console.error("Error updating product:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage
+        })
+        
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      console.log("Producto actualizado exitosamente:", result)
+      return result
+      
+    } catch (error) {
+      console.error("Error updating product:", error)
+      
       if (error.message.includes("Sesión expirada")) {
         return Promise.reject(error)
       }
@@ -281,6 +356,7 @@ export const productService = {
   getAllProducts: ProductService.getAllProducts,
   getProducts: ProductService.getProducts,
   createProduct: ProductService.createProduct,
+  updateProduct: ProductService.updateProduct,
   getProductStats: ProductService.getProductStats,
   getLowStockProducts: ProductService.getLowStockProducts,
   isAuthenticated: ProductService.isAuthenticated,

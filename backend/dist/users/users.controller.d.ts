@@ -13,4 +13,19 @@ export declare class UsersController {
     }>;
     update(id: number, updateUserDto: UpdateUserDto): Promise<import("typeorm").UpdateResult>;
     remove(id: number): Promise<import("typeorm").UpdateResult>;
+    getBalance(id: number): Promise<{
+        balance: number;
+    }>;
+    addBalance(id: number, body: {
+        amount: number;
+    }): Promise<{
+        message: string;
+        newBalance: number;
+    }>;
+    setBalance(id: number, body: {
+        amount: number;
+    }): Promise<{
+        message: string;
+        newBalance: number;
+    }>;
 }

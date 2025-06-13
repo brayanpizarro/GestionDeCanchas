@@ -1,13 +1,20 @@
 import { API_BASE_URL, getAuthHeaders } from "./api"
 import type { ReservationStats } from "../types"
-import type { CreateReservationDto } from "../types/reservation"
-import type { TimeSlot } from "../types/reservation"
+import type { CreateReservationDto, TimeSlot, Reservation } from "../types/reservation"
 export class ReservationService {
   static async getReservations() {
     const response = await fetch(`${API_BASE_URL}/reservations`, {
       headers: getAuthHeaders(),
     })
     if (!response.ok) throw new Error("Error fetching reservations")
+    return response.json()
+  }
+
+  static async getAllReservations() {
+    const response = await fetch(`${API_BASE_URL}/reservations/all`, {
+      headers: getAuthHeaders(),
+    })
+    if (!response.ok) throw new Error("Error fetching all reservations")
     return response.json()
   }
 
@@ -121,6 +128,65 @@ export class ReservationService {
       throw error
     }
   }
+  static async payReservation(reservationId: number): Promise<{ success: boolean, message: string, reservation?: Reservation }> {
+    try {
+      // Obtener el userId del localStorage para testing temporal
+      const userString = localStorage.getItem("user");
+      const user = userString ? JSON.parse(userString) : null;
+      const userId = user?.id || 1; // Usar ID por defecto si no está disponible
+
+      const response = await fetch(`${API_BASE_URL}/reservations/${reservationId}/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ userId })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || "Error al procesar el pago")
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error("Error in payReservation:", error)
+      throw error
+    }
+  }
+
+  static async getAvailabilityWithStatus(courtId: number, date: string): Promise<Array<{ 
+    startTime: Date; 
+    endTime: Date; 
+    isAvailable: boolean; 
+    status?: 'confirmed' | 'pending';
+    reservationId?: number;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reservations/availability/${courtId}?date=${date}`, {
+        headers: getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error fetching availability with status")
+      }      const data = await response.json()
+      return data.map((slot: {
+        startTime: string;
+        endTime: string;
+        isAvailable: boolean;
+        status?: 'confirmed' | 'pending';
+        reservationId?: number;
+      }) => ({
+        ...slot,
+        startTime: new Date(slot.startTime),
+        endTime: new Date(slot.endTime)
+      }))
+    } catch (error) {
+      console.error("Error in getAvailabilityWithStatus:", error)
+      throw error
+    }
+  }
 }
 
 export const reservationService = {
@@ -131,4 +197,6 @@ export const reservationService = {
   getReservations: ReservationService.getReservations,
   getReservationStats: ReservationService.getReservationStats,
   getDashboardStats: ReservationService.getDashboardStats,
+  payReservation: ReservationService.payReservation,
+  getAvailabilityWithStatus: ReservationService.getAvailabilityWithStatus,
 }

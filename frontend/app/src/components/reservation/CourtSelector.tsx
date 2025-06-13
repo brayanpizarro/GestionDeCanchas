@@ -3,6 +3,7 @@
 import type React from "react"
 import { Building2, Users, DollarSign } from "lucide-react"
 import type { Court } from "../../types/reservation"
+import { formatChileanCurrency } from "../../utils/currency"
 
 interface CourtSelectorProps {
   courts: Court[]
@@ -55,7 +56,7 @@ const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, on
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
               <div className="flex items-center text-[#071d40] font-bold text-base sm:text-lg">
                 <DollarSign className="w-4 h-4 mr-1" />
-                {court.price.toLocaleString()}/hora
+                {formatChileanCurrency(court.price)}/hora
               </div>
               <div className="flex items-center text-xs sm:text-sm text-gray-500">
                 <Users className="w-4 h-4 mr-1" />

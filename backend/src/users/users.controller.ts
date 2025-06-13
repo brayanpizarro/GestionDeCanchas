@@ -40,4 +40,29 @@ export class UsersController {// Este controlador maneja las rutas relacionadas 
   remove(@Param('id') id: number) {// Recibe el ID del usuario desde los parámetros de la solicitud
     return this.usersService.remove(id);// Llama al servicio de usuarios para eliminar el usuario
   }
+
+  // Endpoints para manejo de saldo
+  @Get(':id/balance')
+  async getBalance(@Param('id') id: number) {
+    const balance = await this.usersService.getBalance(id);
+    return { balance };
+  }
+
+  @Post(':id/balance/add')
+  async addBalance(@Param('id') id: number, @Body() body: { amount: number }) {
+    const user = await this.usersService.addBalance(id, body.amount);
+    return { 
+      message: 'Saldo agregado exitosamente',
+      newBalance: user.balance 
+    };
+  }
+
+  @Post(':id/balance/set')
+  async setBalance(@Param('id') id: number, @Body() body: { amount: number }) {
+    const user = await this.usersService.setBalance(id, body.amount);
+    return { 
+      message: 'Saldo establecido exitosamente',
+      newBalance: user.balance 
+    };
+  }
 }

@@ -23,10 +23,8 @@ const HomePage: React.FC = () => {
                 }, 100);
             }
         }
-    }, []);
-
-    return (
-        <div className="flex flex-col min-h-screen">
+    }, []);    return (
+        <div className="flex flex-col min-h-screen overflow-x-hidden">
             <Navbar />
             <HeroSection/>
             <FeaturesSection />

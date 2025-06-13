@@ -184,6 +184,40 @@ let UsersService = class UsersService {
         }
         return 'Principiante';
     }
+    async addBalance(userId, amount) {
+        const user = await this.findOne(userId);
+        if (!user) {
+            throw new common_1.HttpException('Usuario no encontrado', common_1.HttpStatus.NOT_FOUND);
+        }
+        user.balance = (user.balance || 0) + amount;
+        return await this.userRepository.save(user);
+    }
+    async deductBalance(userId, amount) {
+        const user = await this.findOne(userId);
+        if (!user) {
+            throw new common_1.HttpException('Usuario no encontrado', common_1.HttpStatus.NOT_FOUND);
+        }
+        if ((user.balance || 0) < amount) {
+            throw new common_1.HttpException('Saldo insuficiente', common_1.HttpStatus.BAD_REQUEST);
+        }
+        user.balance = (user.balance || 0) - amount;
+        return await this.userRepository.save(user);
+    }
+    async getBalance(userId) {
+        const user = await this.findOne(userId);
+        if (!user) {
+            throw new common_1.HttpException('Usuario no encontrado', common_1.HttpStatus.NOT_FOUND);
+        }
+        return user.balance || 0;
+    }
+    async setBalance(userId, amount) {
+        const user = await this.findOne(userId);
+        if (!user) {
+            throw new common_1.HttpException('Usuario no encontrado', common_1.HttpStatus.NOT_FOUND);
+        }
+        user.balance = amount;
+        return await this.userRepository.save(user);
+    }
 };
 exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([

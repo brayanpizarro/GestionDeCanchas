@@ -173,4 +173,47 @@ export class UsersService {
     }
     return 'Principiante';
   }
+
+  // Métodos para manejo de saldo
+  async addBalance(userId: number, amount: number): Promise<User> {
+    const user = await this.findOne(userId);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    user.balance = (user.balance || 0) + amount;
+    return await this.userRepository.save(user);
+  }
+
+  async deductBalance(userId: number, amount: number): Promise<User> {
+    const user = await this.findOne(userId);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    if ((user.balance || 0) < amount) {
+      throw new HttpException('Saldo insuficiente', HttpStatus.BAD_REQUEST);
+    }
+
+    user.balance = (user.balance || 0) - amount;
+    return await this.userRepository.save(user);
+  }
+
+  async getBalance(userId: number): Promise<number> {
+    const user = await this.findOne(userId);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+    return user.balance || 0;
+  }
+
+  async setBalance(userId: number, amount: number): Promise<User> {
+    const user = await this.findOne(userId);
+    if (!user) {
+      throw new HttpException('Usuario no encontrado', HttpStatus.NOT_FOUND);
+    }
+
+    user.balance = amount;
+    return await this.userRepository.save(user);
+  }
 }

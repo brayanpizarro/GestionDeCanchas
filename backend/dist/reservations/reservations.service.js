@@ -23,19 +23,20 @@ const player_entity_1 = require("./entities/player.entity");
 const create_reservation_dto_1 = require("./dto/create-reservation.dto");
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-const email_service_1 = require("../email/email.service");
+const email_utils_1 = require("../utils/email.utils");
+const users_service_1 = require("../users/users.service");
 let ReservationsService = class ReservationsService {
     reservationsRepository;
     courtsRepository;
     usersRepository;
     playersRepository;
-    emailService;
-    constructor(reservationsRepository, courtsRepository, usersRepository, playersRepository, emailService) {
+    usersService;
+    constructor(reservationsRepository, courtsRepository, usersRepository, playersRepository, usersService) {
         this.reservationsRepository = reservationsRepository;
         this.courtsRepository = courtsRepository;
         this.usersRepository = usersRepository;
         this.playersRepository = playersRepository;
-        this.emailService = emailService;
+        this.usersService = usersService;
     }
     async create(rawDto) {
         console.log('Raw DTO received:', rawDto);
@@ -103,22 +104,58 @@ let ReservationsService = class ReservationsService {
         });
         savedReservation.players = await this.playersRepository.save(playerEntities);
         const finalReservation = await this.reservationsRepository.save(savedReservation);
-        try {
-            const duration = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
-            await this.emailService.sendReservationConfirmation(user.email, user.name, {
-                id: finalReservation.id,
-                courtName: court.name,
-                date: startDate.toISOString(),
-                startTime: startDate.toISOString(),
-                endTime: endDate.toISOString(),
-                duration: Math.round(duration),
-                players: players.map(p => `${p.firstName} ${p.lastName}`)
-            });
-        }
-        catch (emailError) {
-            console.error('Error enviando email de confirmación:', emailError);
-        }
+        console.log('🎯 Reserva creada con estado pendiente. Email se enviará tras confirmación de pago.');
         return finalReservation;
+    }
+    async processPayment(reservationId, userId) {
+        const reservation = await this.reservationsRepository.findOne({
+            where: { id: reservationId },
+            relations: ['user', 'court', 'players']
+        });
+        if (!reservation) {
+            throw new common_1.NotFoundException('Reserva no encontrada');
+        }
+        if (reservation.userId !== userId) {
+            throw new common_1.BadRequestException('No tienes permiso para pagar esta reserva');
+        }
+        if (reservation.status !== 'pending') {
+            throw new common_1.BadRequestException('Esta reserva ya ha sido procesada');
+        }
+        const amount = parseFloat(reservation.amount.toString());
+        try {
+            await this.usersService.deductBalance(userId, amount);
+            reservation.status = 'confirmed';
+            const confirmedReservation = await this.reservationsRepository.save(reservation);
+            try {
+                const duration = (reservation.endTime.getTime() - reservation.startTime.getTime()) / (1000 * 60);
+                await (0, email_utils_1.sendReservationConfirmation)(reservation.user.email, reservation.user.name, {
+                    id: confirmedReservation.id,
+                    courtName: reservation.court.name,
+                    date: reservation.startTime.toISOString(),
+                    startTime: reservation.startTime.toISOString(),
+                    endTime: reservation.endTime.toISOString(),
+                    duration: Math.round(duration),
+                    players: reservation.players.map(p => `${p.firstName} ${p.lastName}`)
+                });
+                console.log('✅ Email de confirmación enviado tras pago exitoso');
+            }
+            catch (emailError) {
+                console.error('❌ Error enviando email de confirmación:', emailError);
+            }
+            return {
+                success: true,
+                message: 'Pago procesado exitosamente y confirmación enviada'
+            };
+        }
+        catch (error) {
+            if (error instanceof Error && error.message === 'Saldo insuficiente') {
+                return {
+                    success: false,
+                    message: 'Saldo insuficiente para procesar el pago'
+                };
+            }
+            throw error;
+        }
     }
     calculateAmount(court, startTime, endTime) {
         const start = new Date(startTime);
@@ -127,9 +164,21 @@ let ReservationsService = class ReservationsService {
         return court.pricePerHour * hours;
     }
     async findAll() {
-        return await this.reservationsRepository.find({
+        console.log('🔍 Ejecutando findAll() en ReservationsService...');
+        const reservations = await this.reservationsRepository.find({
             relations: ['court', 'user', 'players'],
         });
+        console.log(`📊 findAll() encontró ${reservations.length} reservas`);
+        return reservations;
+    }
+    async findAllWithDeleted() {
+        console.log('🔍 Ejecutando findAllWithDeleted() - incluyendo eliminadas...');
+        const reservations = await this.reservationsRepository.find({
+            relations: ['court', 'user', 'players'],
+            withDeleted: true,
+        });
+        console.log(`📊 findAllWithDeleted() encontró ${reservations.length} reservas (incluyendo eliminadas)`);
+        return reservations;
     }
     async getTotalCount() {
         return await this.reservationsRepository.count();
@@ -170,14 +219,7 @@ let ReservationsService = class ReservationsService {
         const updatedReservation = await this.reservationsRepository.save(reservation);
         if (status === 'cancelled' && oldStatus !== 'cancelled') {
             try {
-                await this.emailService.sendReservationCancellation(reservation.user.email, reservation.user.name, {
-                    id: reservation.id,
-                    courtName: reservation.court.name,
-                    date: reservation.startTime.toISOString(),
-                    startTime: reservation.startTime.toISOString(),
-                    endTime: reservation.endTime.toISOString(),
-                    cancellationReason: 'Cancelación solicitada por el usuario'
-                });
+                console.log('Reserva cancelada - email de notificación pendiente');
             }
             catch (emailError) {
                 console.error('Error enviando email de cancelación:', emailError);
@@ -207,7 +249,7 @@ let ReservationsService = class ReservationsService {
             where: {
                 court: { id: courtId },
                 startTime: (0, typeorm_2.Between)(startOfDay, endOfDay),
-                status: 'confirmed',
+                status: (0, typeorm_2.In)(['confirmed', 'pending']),
             },
             order: { startTime: 'ASC' },
         });
@@ -235,6 +277,64 @@ let ReservationsService = class ReservationsService {
         }
         return availableTimeSlots;
     }
+    async getTimeSlotsWithAvailability(courtId, date) {
+        if (!Number.isInteger(courtId) || courtId <= 0) {
+            throw new common_1.BadRequestException('Invalid court ID');
+        }
+        const court = await this.courtsRepository.findOneBy({ id: courtId });
+        if (!court) {
+            throw new common_1.NotFoundException(`Court with ID ${courtId} not found`);
+        }
+        const startOfDay = new Date(date);
+        if (isNaN(startOfDay.getTime())) {
+            throw new common_1.BadRequestException('Invalid date format');
+        }
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+        const reservations = await this.reservationsRepository.find({
+            where: {
+                court: { id: courtId },
+                startTime: (0, typeorm_2.Between)(startOfDay, endOfDay),
+                status: (0, typeorm_2.In)(['confirmed', 'pending']),
+            },
+            order: { startTime: 'ASC' },
+        });
+        const timeSlots = [];
+        const slotDuration = 60;
+        const openingTime = new Date(date);
+        openingTime.setHours(8, 0, 0, 0);
+        const closingTime = new Date(date);
+        closingTime.setHours(22, 0, 0, 0);
+        let currentSlot = new Date(openingTime);
+        while (currentSlot < closingTime) {
+            const slotEnd = new Date(currentSlot);
+            slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);
+            const conflictingReservation = reservations.find(reservation => {
+                return (currentSlot >= reservation.startTime && currentSlot < reservation.endTime) ||
+                    (slotEnd > reservation.startTime && slotEnd <= reservation.endTime) ||
+                    (currentSlot <= reservation.startTime && slotEnd >= reservation.endTime);
+            });
+            if (conflictingReservation) {
+                timeSlots.push({
+                    startTime: new Date(currentSlot),
+                    endTime: new Date(slotEnd),
+                    isAvailable: false,
+                    status: conflictingReservation.status,
+                    reservationId: conflictingReservation.id,
+                });
+            }
+            else {
+                timeSlots.push({
+                    startTime: new Date(currentSlot),
+                    endTime: new Date(slotEnd),
+                    isAvailable: true,
+                });
+            }
+            currentSlot = new Date(slotEnd);
+        }
+        return timeSlots;
+    }
 };
 exports.ReservationsService = ReservationsService;
 exports.ReservationsService = ReservationsService = __decorate([
@@ -243,10 +343,11 @@ exports.ReservationsService = ReservationsService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(court_entity_1.Court)),
     __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __param(3, (0, typeorm_1.InjectRepository)(player_entity_1.Player)),
+    __param(4, (0, common_1.Inject)((0, common_1.forwardRef)(() => users_service_1.UsersService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        email_service_1.EmailService])
+        users_service_1.UsersService])
 ], ReservationsService);
 //# sourceMappingURL=reservations.service.js.map

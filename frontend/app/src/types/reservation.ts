@@ -51,3 +51,21 @@ export interface ReservationSummary {
     players: Player[]
     total: number
 }
+
+export interface Reservation {
+    id: number
+    courtId: number
+    userId: number
+    startTime: string
+    endTime: string
+    status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+    totalAmount: number
+    createdAt: string
+    updatedAt: string
+    court?: Court
+    user?: {
+        id: number
+        name: string
+        email: string
+    }
+}

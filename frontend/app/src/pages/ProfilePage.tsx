@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext'; 
 import { updatePassword } from '../service/authService';
+import { UserService } from '../service/userService';
+import { reservationService } from '../service/reservationService';
+import { formatChileanCurrency } from '../utils/currency';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { BalanceModal } from '../components/BalanceModal';
 import { CreditCard, Key, History, Wallet, Edit2, Plus, Eye, EyeOff } from 'lucide-react';
 
 // Interfaces para tipado
@@ -40,54 +44,79 @@ const ProfilePage: React.FC = () => {
     const [showBalance, setShowBalance] = useState(false);
     const [showAddCard, setShowAddCard] = useState(false);
     const [showTopUp, setShowTopUp] = useState(false);
+    const [showBalanceModal, setShowBalanceModal] = useState(false);
+    const [currentBalance, setCurrentBalance] = useState(0);
+    const [balanceLoading, setBalanceLoading] = useState(false);
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
+    const [error, setError] = useState<string | null>(null);    useEffect(() => {
         if (!authLoading && !isAuthenticated) {
             // Redirigir a la página de autenticación si no está autenticado
             navigate('/auth');
-        
-    }
-        // Función para cargar reservaciones (descomentada y mejorada)
+            return;
+        }
+
+        // Función para cargar el saldo del usuario
+        const fetchUserBalance = async () => {
+            if (!user?.id) return;
+            
+            try {
+                setBalanceLoading(true);
+                const balance = await UserService.getUserBalance(user.id);
+                setCurrentBalance(balance);
+            } catch (err) {
+                console.error('Error al cargar saldo:', err);
+                setError('Error al cargar el saldo');
+            } finally {
+                setBalanceLoading(false);
+            }
+        };
+
+        // Función para cargar reservaciones reales
         const fetchReservations = async () => {
+            if (!user?.id) return;
+            
             try {
                 setLoading(true);
-                // Aquí deberías hacer la llamada real a tu API o Supabase
-                // const { data, error } = await 
-                //     .from('reservations')
-                //     .select('*')
-                //     .eq('user_id', user.id)
-                //     .order('date', { ascending: false });
-
-                // if (error) throw error;
-                // setReservations(data || []);
-
-                // Datos de ejemplo mientras implementas la API
-                const mockReservations: Reservation[] = [
-                    {
-                        id: '1',
-                        court: 'Cancha 1',
-                        date: '2024-01-15',
-                        time: '10:00',
-                        duration: 60,
-                        total: 50000,
-                        equipment: ['Raqueta', 'Pelotas']
-                    }
-                ];
-                setReservations(mockReservations);
+                const userReservations = await reservationService.getReservationsByUser(user.id);
+                  // Transformar los datos para que coincidan con la interfaz local
+                const transformedReservations: Reservation[] = userReservations.map((res: unknown) => {
+                    const reservation = res as {
+                        id: number;
+                        court?: { name: string };
+                        startTime: string;
+                        endTime: string;
+                        totalAmount?: number;
+                    };
+                    
+                    return {
+                        id: reservation.id.toString(),
+                        court: reservation.court?.name || 'Cancha desconocida',
+                        date: new Date(reservation.startTime).toLocaleDateString(),
+                        time: new Date(reservation.startTime).toLocaleTimeString('es-CL', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        }),
+                        duration: Math.round((new Date(reservation.endTime).getTime() - new Date(reservation.startTime).getTime()) / (1000 * 60)),
+                        total: reservation.totalAmount || 0,
+                        equipment: []
+                    };
+                });
+                
+                setReservations(transformedReservations);
             } catch (err) {
+                console.error('Error al cargar reservaciones:', err);
                 setError('Error al cargar las reservaciones');
-                console.error('Error fetching reservations:', err);
             } finally {
                 setLoading(false);
             }
         };
+
         if (isAuthenticated && user) {
-        fetchReservations();
+            fetchUserBalance();
+            fetchReservations();
         }
-    }, [isAuthenticated, authLoading,navigate, user]);
+    }, [isAuthenticated, authLoading, navigate, user]);
 
     if(authLoading) {
         return ( <div>Cargando...</div>)}
@@ -156,9 +185,7 @@ const ProfilePage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleTopUp = async (e: React.FormEvent) => {
+    };    const handleTopUp = async (e: React.FormEvent) => {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const formData = new FormData(form);
@@ -174,18 +201,31 @@ const ProfilePage: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            // Aquí implementarías la lógica para recargar saldo
-            // await topUpBalance(amount, cardId);
             
-            console.log('Top up:', { amount, cardId });
-            setShowTopUp(false);
-            form.reset();
-            // Recargar datos del usuario si es necesario
+            if (user?.id) {
+                const newBalance = await UserService.addBalance(user.id, amount);
+                setCurrentBalance(newBalance);
+                setShowTopUp(false);
+                form.reset();
+            }
         } catch (error) {
             setError('Error al recargar el saldo');
             console.error('Top up error:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Función para manejar la recarga desde el modal
+    const handleBalanceRecharge = async (amount: number) => {
+        if (!user?.id) return;
+        
+        try {
+            const newBalance = await UserService.addBalance(user.id, amount);
+            setCurrentBalance(newBalance);
+        } catch (error) {
+            console.error('Error al recargar saldo:', error);
+            throw error;
         }
     };
 
@@ -401,38 +441,37 @@ const ProfilePage: React.FC = () => {
                                 {/* Payment Methods and Balance */}
                                 {activeTab === 'payments' && (
                                     <div>
-                                        <h2 className="text-xl font-semibold mb-6">Métodos de Pago y Saldo</h2>
-
-                                        {/* Balance */}
-                                        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                                        <h2 className="text-xl font-semibold mb-6">Métodos de Pago y Saldo</h2>                                        {/* Balance */}
+                                        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 mb-6 text-white">
                                             <div className="flex justify-between items-center">
                                                 <div>
-                                                    <p className="text-sm text-gray-600">Tu saldo actual</p>
-                                                    <p className="text-2xl font-bold text-[#071d40] flex items-center">
-                                                        ${showBalance ? (user.balance || 0).toLocaleString() : '****'}
+                                                    <p className="text-sm opacity-90">Tu saldo actual</p>
+                                                    <p className="text-3xl font-bold flex items-center">
+                                                        {balanceLoading ? (
+                                                            <span className="animate-pulse">Cargando...</span>
+                                                        ) : (
+                                                            showBalance ? formatChileanCurrency(currentBalance) : '****'
+                                                        )}
                                                         <button
                                                             onClick={() => setShowBalance(!showBalance)}
-                                                            className="ml-2 hover:bg-gray-200 p-1 rounded"
+                                                            className="ml-2 hover:bg-white/20 p-1 rounded"
                                                         >
-                                                            {showBalance ? (
-                                                                <EyeOff className="h-5 w-5 text-gray-500" />
+                                                            {showBalance ? (                                                                <EyeOff className="h-5 w-5" />
                                                             ) : (
-                                                                <Eye className="h-5 w-5 text-gray-500" />
+                                                                <Eye className="h-5 w-5" />
                                                             )}
                                                         </button>
                                                     </p>
                                                 </div>
                                                 <button
-                                                    onClick={() => setShowTopUp(true)}
-                                                    className="bg-[#071d40] text-white px-4 py-2 rounded-md hover:bg-[#122e5e] transition flex items-center"
+                                                    onClick={() => setShowBalanceModal(true)}
+                                                    className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-md hover:bg-white/30 transition flex items-center"
                                                 >
                                                     <Plus className="h-5 w-5 mr-2" />
                                                     Recargar
                                                 </button>
                                             </div>
-                                        </div>
-
-                                        {/* Cards */}
+                                        </div>                                        {/* Cards */}
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center">
                                                 <h3 className="text-lg font-medium">Tarjetas guardadas</h3>
@@ -647,14 +686,22 @@ const ProfilePage: React.FC = () => {
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                )}
+                                    </div>                                )}
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
             <Footer />
+            
+            {/* Modal de recarga de saldo */}
+            <BalanceModal
+                isOpen={showBalanceModal}
+                onClose={() => setShowBalanceModal(false)}
+                currentBalance={currentBalance}
+                onRecharge={handleBalanceRecharge}
+                loading={balanceLoading}
+            />
         </div>
     );
 };

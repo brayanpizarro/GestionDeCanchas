@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Users, TrendingUp, BarChart3, Package, Plus, ChevronDown, Building2, Loader2 } from "lucide-react"
+import { Users, BarChart3, Package, Plus, ChevronDown, Building2, Loader2, Calendar } from "lucide-react"
 import StatCard from "../components/admin/StatCard"
 import ChangePasswordModal from "../components/admin/ChangePasswordModal"
 import UsersTable from "../components/admin/UsersTable"
@@ -8,15 +8,31 @@ import CreateCourtModal from "../components/admin/CreateCourtModal"
 import CreateProductModal from "../components/admin/CreateProductModal"
 import {CourtService} from "../service/courtService"
 import { ReservationService} from "../service/reservationService"
+import { formatChileanCurrency } from "../utils/currency"
 import { ProductService } from "../service/productService"
 import { UserService } from "../service/userService"
 import type { Court, ReservationStats, Product, User, CreateCourtFormData, CreateProductFormData } from "../types"
+
+interface AdminReservation {
+  id: string | number
+  user?: { name: string }
+  userName?: string
+  court?: { name: string }
+  courtName?: string
+  date?: string
+  startTime: string
+  endTime: string
+  status: "pending" | "confirmed" | "completed" | "cancelled"
+  totalPrice?: number
+  total?: number
+}
 
 
 function AdminDashboard() {
   // State
   const [courts, setCourts] = useState<Court[]>([])
   const [reservationStats, setReservationStats] = useState<ReservationStats[]>([])
+  const [reservations, setReservations] = useState<AdminReservation[]>([]) // Added reservations state
   const [products, setProducts] = useState<Product[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
@@ -26,10 +42,13 @@ function AdminDashboard() {
   // UI States
   const [isCreateCourtModalOpen, setIsCreateCourtModalOpen] = useState(false)
   const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false)
+  const [isEditCourtModalOpen, setIsEditCourtModalOpen] = useState(false) // Added edit court modal
+  const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false) // Added edit product modal
+  const [editingCourt, setEditingCourt] = useState<Court | null>(null) // Added editing court state
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null) // Added editing product state
   const [activeTab, setActiveTab] = useState("dashboard")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
   // Load initial data
   useEffect(() => {
     const loadCurrentUser = () => {
@@ -43,15 +62,16 @@ function AdminDashboard() {
     loadCurrentUser()
     loadInitialData()
   }, [])
-
   const loadInitialData = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const [courtsData, statsData, productsData, usersData] = await Promise.allSettled([
+      const [courtsData, statsData, reservationsData, productsData, usersData] = await Promise.allSettled([
         CourtService.getCourts(),
         ReservationService.getReservationStats(),
+        // Try to get all reservations for admin, fallback to regular if needed
+        ReservationService.getAllReservations().catch(() => ReservationService.getReservations()),
         ProductService.getProducts(),
         UserService.getUsers(),
       ])
@@ -62,6 +82,10 @@ function AdminDashboard() {
 
       if (statsData.status === "fulfilled") {
         setReservationStats(statsData.value)
+      }
+
+      if (reservationsData.status === "fulfilled") {
+        setReservations(reservationsData.value)
       }
 
       if (productsData.status === "fulfilled") {
@@ -90,7 +114,6 @@ function AdminDashboard() {
       alert(err instanceof Error ? err.message : "Error al crear la cancha")
     }
   }
-
   const handleCreateProduct = async (data: CreateProductFormData) => {
     try {
       const newProduct = await ProductService.createProduct(data)
@@ -103,6 +126,54 @@ function AdminDashboard() {
     }
   }
 
+  // Edit functions
+  const handleEditCourt = (court: Court) => {
+    setEditingCourt(court)
+    setIsEditCourtModalOpen(true)
+  }
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product)
+    setIsEditProductModalOpen(true)
+  }
+
+  const handleUpdateCourt = async (data: CreateCourtFormData) => {
+    if (!editingCourt) return
+    
+    try {
+      const updatedCourt = await CourtService.updateCourt(editingCourt.id, data)
+      setCourts((prevCourts) => 
+        prevCourts.map((court) => 
+          court.id === editingCourt.id ? updatedCourt : court
+        )
+      )
+      setIsEditCourtModalOpen(false)
+      setEditingCourt(null)
+      alert("Cancha actualizada exitosamente")
+    } catch (err) {
+      console.error("Error updating court:", err)
+      alert(err instanceof Error ? err.message : "Error al actualizar la cancha")
+    }
+  }
+
+  const handleUpdateProduct = async (data: CreateProductFormData) => {
+    if (!editingProduct) return
+    
+    try {
+      const updatedProduct = await ProductService.updateProduct(editingProduct.id, data)
+      setProducts((prevProducts) => 
+        prevProducts.map((product) => 
+          product.id === editingProduct.id ? updatedProduct : product
+        )
+      )
+      setIsEditProductModalOpen(false)
+      setEditingProduct(null)
+      alert("Producto actualizado exitosamente")
+    } catch (error) {
+      console.error("Error updating product:", error)
+      alert(error instanceof Error ? error.message : "Error al actualizar el producto")
+    }
+  }
   const handleStatusChange = async (courtId: string, newStatus: "available" | "occupied" | "maintenance") => {
     try {
       await CourtService.updateCourtStatus(courtId, newStatus)
@@ -113,6 +184,28 @@ function AdminDashboard() {
     } catch (err) {
       console.error("Error updating court status:", err)
       alert("Error al actualizar el estado de la cancha")
+    }
+  }
+
+  const handleReservationStatusChange = async (
+    reservationId: string | number, 
+    newStatus: "pending" | "confirmed" | "completed" | "cancelled"
+  ) => {
+    try {
+      await ReservationService.updateReservationStatus(Number(reservationId), newStatus)
+      
+      setReservations((prevReservations) =>
+        prevReservations.map((reservation) => 
+          reservation.id === reservationId 
+            ? { ...reservation, status: newStatus } 
+            : reservation
+        )
+      )
+      
+      alert("Estado de reserva actualizado exitosamente")
+    } catch (err) {
+      console.error("Error updating reservation status:", err)
+      alert("Error al actualizar el estado de la reserva")
     }
   }
 
@@ -136,7 +229,6 @@ function AdminDashboard() {
       alert(error instanceof Error ? error.message : "Error al eliminar usuario")
     }
   }
-
   const stats = [
     {
       title: "Total Canchas",
@@ -154,9 +246,13 @@ function AdminDashboard() {
     },
     {
       title: "Reservas Hoy",
-      value: 0,
+      value: reservations.filter(r => {
+        const today = new Date().toDateString()
+        const reservationDate = new Date(r.date || r.startTime).toDateString()
+        return reservationDate === today
+      }).length,
       subtitle: "reservas programadas",
-      icon: TrendingUp,
+      icon: Calendar,
       color: "bg-green-600",
     },
     {
@@ -248,9 +344,9 @@ function AdminDashboard() {
       {/* Navigation */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-4 sm:space-x-8 items-center overflow-x-auto">
-            {[
+          <nav className="flex space-x-4 sm:space-x-8 items-center overflow-x-auto">            {[
               { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+              { id: "reservas", label: "Reservas", icon: Calendar },
               { id: "productos", label: "Productos", icon: Package },
               { id: "canchas", label: "Canchas", icon: Building2 },
               { id: "usuarios", label: "Usuarios", icon: Users },
@@ -355,7 +451,7 @@ function AdminDashboard() {
                           <span className="text-sm font-medium text-gray-700 truncate">{product.name}</span>
                         </div>
                         <div className="text-right ml-4 flex-shrink-0">
-                          <div className="text-lg font-bold text-gray-900">${product.price.toLocaleString()}</div>
+                          <div className="text-lg font-bold text-gray-900">{formatChileanCurrency(product.price)}</div>
                           <div className="text-sm text-gray-500">{product.stock} disponibles</div>
                         </div>
                       </div>
@@ -364,6 +460,125 @@ function AdminDashboard() {
                   <div className="text-center py-8 text-gray-500">No hay productos disponibles</div>
                 )}
               </div>
+            </div>          </div>
+        )}
+
+        {/* Reservations Management */}
+        {activeTab === "reservas" && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+                <h2 className="text-lg font-semibold text-gray-900">Gestión de Reservas</h2>
+                <div className="text-sm text-gray-500">Total: {reservations.length} reservas</div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ID
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Usuario
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cancha
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Fecha y Hora
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Estado
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total
+                    </th>
+                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {reservations.length > 0 ? (
+                    reservations.map((reservation) => (
+                      <tr key={reservation.id}>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{reservation.id}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {reservation.user?.name || reservation.userName || 'Usuario desconocido'}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {reservation.court?.name || reservation.courtName || 'Cancha no especificada'}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div>
+                            <div className="font-medium">
+                              {new Date(reservation.date || reservation.startTime).toLocaleDateString('es-ES')}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {new Date(reservation.startTime).toLocaleTimeString('es-ES', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })} - 
+                              {new Date(reservation.endTime).toLocaleTimeString('es-ES', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              })}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full ${
+                              reservation.status === "confirmed"
+                                ? "bg-green-100 text-green-800"
+                                : reservation.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : reservation.status === "cancelled"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {reservation.status === "confirmed" ? "Confirmada" :
+                             reservation.status === "pending" ? "Pendiente" :
+                             reservation.status === "cancelled" ? "Cancelada" :
+                             reservation.status === "completed" ? "Completada" : reservation.status}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatChileanCurrency(reservation.totalPrice || reservation.total || 0)}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">                            <select
+                              value={reservation.status}
+                              onChange={(e) => {
+                                handleReservationStatusChange(
+                                  reservation.id, 
+                                  e.target.value as "pending" | "confirmed" | "completed" | "cancelled"
+                                )
+                              }}
+                              className="text-xs px-2 py-1 border border-gray-300 rounded"
+                            >
+                              <option value="pending">Pendiente</option>
+                              <option value="confirmed">Confirmar</option>
+                              <option value="completed">Completada</option>
+                              <option value="cancelled">Cancelar</option>
+                            </select>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                        No hay reservas registradas.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -437,7 +652,7 @@ function AdminDashboard() {
                           {court.capacity} personas
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          ${court.pricePerHour.toLocaleString()}
+                          {formatChileanCurrency(court.pricePerHour)}
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <select
@@ -455,12 +670,16 @@ function AdminDashboard() {
                           >
                             <option value="available">Disponible</option>
                             <option value="occupied">Ocupada</option>
-                            <option value="maintenance">Mantenimiento</option>
-                          </select>
+                            <option value="maintenance">Mantenimiento</option>                          </select>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
-                            <button className="text-blue-600 hover:text-blue-900">Editar</button>
+                            <button 
+                              onClick={() => handleEditCourt(court)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              Editar
+                            </button>
                             <button className="text-red-600 hover:text-red-900">Eliminar</button>
                           </div>
                         </td>
@@ -533,7 +752,7 @@ function AdminDashboard() {
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${product.price.toLocaleString()}
+                          {formatChileanCurrency(product.price)}
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span
@@ -547,13 +766,17 @@ function AdminDashboard() {
                           >
                             {product.stock} unidades
                           </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        </td>                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {product.sold} vendidos
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
-                            <button className="text-blue-600 hover:text-blue-900">Editar</button>
+                            <button 
+                              onClick={() => handleEditProduct(product)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              Editar
+                            </button>
                             <button className="text-red-600 hover:text-red-900">Eliminar</button>
                           </div>
                         </td>
@@ -592,19 +815,52 @@ function AdminDashboard() {
             </div>
           </div>
         )}
-      </main>
-
-      {/* Modals */}
+      </main>      {/* Modals */}
       <CreateCourtModal
         isOpen={isCreateCourtModalOpen}
         onClose={() => setIsCreateCourtModalOpen(false)}
         onSubmit={handleCreateCourt}
       />
 
+      <CreateCourtModal
+        isOpen={isEditCourtModalOpen}
+        onClose={() => {
+          setIsEditCourtModalOpen(false)
+          setEditingCourt(null)
+        }}
+        onSubmit={handleUpdateCourt}        editData={editingCourt ? {
+          name: editingCourt.name,
+          type: editingCourt.type,
+          status: editingCourt.status,
+          capacity: editingCourt.capacity,
+          pricePerHour: editingCourt.pricePerHour,
+          imageFile: undefined
+        } : undefined}
+        isEditing={true}
+      />
+
       <CreateProductModal
         isOpen={isCreateProductModalOpen}
         onClose={() => setIsCreateProductModalOpen(false)}
         onSubmit={handleCreateProduct}
+      />
+
+      <CreateProductModal
+        isOpen={isEditProductModalOpen}
+        onClose={() => {
+          setIsEditProductModalOpen(false)
+          setEditingProduct(null)
+        }}
+        onSubmit={handleUpdateProduct}        editData={editingProduct ? {
+          name: editingProduct.name,
+          description: editingProduct.description,
+          price: editingProduct.price,
+          stock: editingProduct.stock,
+          category: editingProduct.category,
+          available: true, // Default value
+          imageFile: undefined
+        } : undefined}
+        isEditing={true}
       />
 
       <ChangePasswordModal

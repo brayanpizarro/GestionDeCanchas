@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X } from "lucide-react"
 import type { CreateProductFormData } from "../../types"
 
@@ -9,9 +9,17 @@ interface CreateProductModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: CreateProductFormData) => Promise<void>
+  editData?: CreateProductFormData
+  isEditing?: boolean
 }
 
-const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose, onSubmit }) => {
+const CreateProductModal: React.FC<CreateProductModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSubmit,
+  editData,
+  isEditing = false 
+}) => {
   const [formData, setFormData] = useState<CreateProductFormData>({
     name: "",
     description: "",
@@ -22,6 +30,22 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
+
+  // Effect to populate form with edit data
+  useEffect(() => {
+    if (isEditing && editData) {
+      setFormData(editData)
+    } else if (!isEditing) {
+      setFormData({
+        name: "",
+        description: "",
+        price: 0,
+        stock: 0,
+        available: true,
+        category: "",
+      })
+    }
+  }, [isEditing, editData, isOpen])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,9 +62,9 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
         available: true,
         category: "",
       })
-      onClose()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al crear el producto")
+      onClose()    } catch (err) {
+      setError(err instanceof Error ? err.message : 
+        `Error al ${isEditing ? 'actualizar' : 'crear'} el producto`)
     } finally {
       setIsSubmitting(false)
     }
@@ -59,7 +83,9 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Nuevo Producto</h2>
+          <h2 className="text-xl font-semibold">
+            {isEditing ? "Editar Producto" : "Nuevo Producto"}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-6 h-6" />
           </button>
@@ -160,7 +186,10 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50"
             >
-              {isSubmitting ? "Creando..." : "Crear Producto"}
+              {isSubmitting 
+                ? (isEditing ? "Actualizando..." : "Creando...") 
+                : (isEditing ? "Actualizar Producto" : "Crear Producto")
+              }
             </button>
           </div>
         </form>

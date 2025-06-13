@@ -84,7 +84,6 @@ export class CourtService {
 
     return response.json()
   }
-
   static async updateCourtStatus(courtId: string, status: "available" | "occupied" | "maintenance"): Promise<Court> {
     const response = await fetch(`${API_BASE_URL}/courts/${courtId}/status`, {
       method: "PATCH",
@@ -93,6 +92,32 @@ export class CourtService {
     })
 
     if (!response.ok) throw new Error("Error updating court status")
+    return response.json()
+  }
+
+  static async updateCourt(courtId: string, courtData: CreateCourtFormData): Promise<Court> {
+    const formData = new FormData()
+    formData.append("name", courtData.name)
+    formData.append("type", courtData.type)
+    formData.append("status", courtData.status)
+    formData.append("capacity", String(Number(courtData.capacity)))
+    formData.append("pricePerHour", String(Number(courtData.pricePerHour)))
+
+    if (courtData.imageFile) {
+      formData.append("image", courtData.imageFile)
+    }
+
+    const response = await fetch(`${API_BASE_URL}/courts/${courtId}`, {
+      method: "PUT",
+      headers: getAuthHeadersForFormData(),
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.message || "Error updating court")
+    }
+
     return response.json()
   }
 
@@ -109,6 +134,7 @@ export const courtService = {
   getAllCourts: CourtService.getAllCourts,
   getCourts: CourtService.getCourts,
   createCourt: CourtService.createCourt,
+  updateCourt: CourtService.updateCourt,
   updateCourtStatus: CourtService.updateCourtStatus,
   getCourtUsage: CourtService.getCourtUsage,
 }

@@ -4,7 +4,34 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="090e0ad7-4268-4fe7-b846-fbfb24ab1492" name="Changes" comment="Refactor dashboard types, optimize imports, and integrate player entity. Add admin creation script and enhance reservation functionality with player management. Update CORS, global settings and improve logging." />
+    <list default="true" id="090e0ad7-4268-4fe7-b846-fbfb24ab1492" name="Changes" comment="Refactor dashboard types, optimize imports, and integrate player entity. Add admin creation script and enhance reservation functionality with player management. Update CORS, global settings and improve logging.">
+      <change beforePath="$PROJECT_DIR$/backend/src/reservations/reservations.controller.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/reservations.controller.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/reservations/reservations.module.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/reservations.module.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/reservations/reservations.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/reservations/reservations.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/users/users.controller.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/users/users.controller.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/users/users.service.ts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/users/users.service.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Equipment.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Equipment.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/FeatureCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/FeatureCard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Features.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Features.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Footer.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Footer.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Hero.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Hero.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/Location.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/Location.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/admin/CreateCourtModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/admin/CreateCourtModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/admin/CreateProductModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/admin/CreateProductModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/reservation/CourtSelector.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/reservation/CourtSelector.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/reservation/EquipmentSelector.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/reservation/EquipmentSelector.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/reservation/ReservationCalendar_clean.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/components/reservation/ReservationSummary.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/components/reservation/ReservationSummary.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/pages/HomePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/pages/HomePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/pages/ProfilePage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/pages/ProfilePage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/pages/ReservationPage.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/pages/ReservationPage.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/pages/admin-dashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/pages/admin-dashboard.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/courtService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/courtService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/productService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/productService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/reservationService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/reservationService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/service/userService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/service/userService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/app/src/types/reservation.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/app/src/types/reservation.ts" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -40,29 +67,34 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/fabri/IdeaProjects/GestionCanchas-UCN&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Modules&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\fabri\\IdeaProjects\\GestionCanchas-UCN\\frontend\\app\\node_modules\\typescript\\lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "git-widget-placeholder": "main",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "D:/GestionCanchas-UCN",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "C:\\Users\\fabri\\IdeaProjects\\GestionCanchas-UCN\\frontend\\app\\node_modules\\typescript\\lib",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
+    ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\fabri\IdeaProjects\GestionCanchas-UCN\frontend\app\assets\imagenes" />
@@ -125,6 +157,7 @@
       <workItem from="1748905015684" duration="148000" />
       <workItem from="1748905209220" duration="7795000" />
       <workItem from="1748924196954" duration="167000" />
+      <workItem from="1749776645809" duration="215000" />
     </task>
     <task id="LOCAL-00001" summary="Initialize frontend project with main app structure and components&#10;&#10;Set up a Vite React TypeScript project for &quot;Canchas UCENIN&quot; featuring key components such as Navbar, Hero, Features, and Footer. Added styling with TailwindCSS, implemented smooth scrolling, and included utility components like Button and Input. Configuration files and Git ignore settings were also established.">
       <option name="closed" value="true" />
