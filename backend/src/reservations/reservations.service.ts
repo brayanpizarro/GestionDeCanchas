@@ -8,8 +8,9 @@ import { Player } from './entities/player.entity';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { sendReservationConfirmation } from '../utils/email.utils';
+import { EmailService } from '../email/email.service';
 import { UsersService } from '../users/users.service';
+import { cleanRut, getRutErrorMessage } from '../utils/rutValidator';
 
 @Injectable()
 export class ReservationsService {
@@ -23,7 +24,8 @@ export class ReservationsService {
         @InjectRepository(Player)
         private readonly playersRepository: Repository<Player>,
         @Inject(forwardRef(() => UsersService))
-        private readonly usersService: UsersService
+        private readonly usersService: UsersService,
+        private readonly emailService: EmailService
     ) {}
 
     async create(rawDto: unknown): Promise<Reservation> {
@@ -75,18 +77,29 @@ export class ReservationsService {
             throw new BadRequestException('Invalid date format');
         }
 
-        // Check for existing reservations
-        const existingReservation = await this.reservationsRepository.findOne({
-            where: {
-                court: { id: courtId },
-                startTime: Between(startDate, endDate),
-                status: 'confirmed',
-            },
-            relations: ['court'],
-        });
+        // Check for existing reservations that could conflict
+        // We need to check for any overlap, not just exact matches
+        const conflictingReservations = await this.reservationsRepository.createQueryBuilder('reservation')
+            .where('reservation.courtId = :courtId', { courtId })
+            .andWhere('reservation.status IN (:...statuses)', { statuses: ['confirmed', 'pending'] })
+            .andWhere(
+                '(reservation.startTime < :endTime AND reservation.endTime > :startTime)',
+                { startTime: startDate, endTime: endDate }
+            )
+            .getMany();
 
-        if (existingReservation) {
-            throw new BadRequestException('This court is already reserved for the specified time');
+        if (conflictingReservations.length > 0) {
+            const conflictDetails = conflictingReservations.map(res => {
+                const status = res.status === 'confirmed' ? 'CONFIRMADA' : 'PENDIENTE';
+                return `${res.startTime.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} - ${res.endTime.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} (${status})`;
+            }).join(', ');
+            
+            throw new BadRequestException(
+                `❌ HORARIO NO DISPONIBLE: Esta cancha ya tiene reservas que se superponen con el horario solicitado. ` +
+                `Esto evita conflictos y disputas entre usuarios. ` +
+                `Reservas existentes: ${conflictDetails}. ` +
+                `Por favor, selecciona otro horario disponible.`
+            );
         }
 
         const amount = this.calculateAmount(court, startTime, endTime);
@@ -103,6 +116,23 @@ export class ReservationsService {
         // Save the reservation first to get the ID
         const savedReservation = await this.reservationsRepository.save(reservation);
 
+        // Validate RUTs and check for duplicates
+        const rutSet = new Set<string>();
+        for (const playerDto of players) {
+            // Validar el RUT
+            const rutError = getRutErrorMessage(playerDto.rut);
+            if (rutError) {
+                throw new BadRequestException(`RUT inválido para el jugador ${playerDto.firstName} ${playerDto.lastName}: ${rutError}`);
+            }
+
+            // Verificar RUTs duplicados
+            const cleanedRut = cleanRut(playerDto.rut);
+            if (rutSet.has(cleanedRut)) {
+                throw new BadRequestException(`RUT duplicado: ${playerDto.rut}`);
+            }
+            rutSet.add(cleanedRut);
+        }
+
         // Create and save the players
         const playerEntities = players.map(playerDto => {
             return this.playersRepository.create({
@@ -114,9 +144,6 @@ export class ReservationsService {
         savedReservation.players = await this.playersRepository.save(playerEntities);
 
         const finalReservation = await this.reservationsRepository.save(savedReservation);
-
-        // El email se enviará cuando se confirme el pago, no al crear la reserva
-        console.log('🎯 Reserva creada con estado pendiente. Email se enviará tras confirmación de pago.');
 
         return finalReservation;
     }
@@ -153,7 +180,7 @@ export class ReservationsService {
             // Enviar email de confirmación DESPUÉS del pago exitoso
             try {
                 const duration = (reservation.endTime.getTime() - reservation.startTime.getTime()) / (1000 * 60);
-                await sendReservationConfirmation(
+                await this.emailService.sendReservationConfirmation(
                     reservation.user.email,
                     reservation.user.name,
                     {
@@ -166,9 +193,9 @@ export class ReservationsService {
                         players: reservation.players.map(p => `${p.firstName} ${p.lastName}`)
                     }
                 );
-                console.log('✅ Email de confirmación enviado tras pago exitoso');
+                console.log('Email de confirmación enviado tras pago exitoso');
             } catch (emailError) {
-                console.error('❌ Error enviando email de confirmación:', emailError);
+                console.error('Error enviando email de confirmación:', emailError);
                 // No lanzamos el error para no afectar el flujo de pago
             }
 
@@ -195,21 +222,17 @@ export class ReservationsService {
     }
 
     async findAll(): Promise<Reservation[]> {
-        console.log('🔍 Ejecutando findAll() en ReservationsService...');
         const reservations = await this.reservationsRepository.find({
             relations: ['court', 'user', 'players'],
         });
-        console.log(`📊 findAll() encontró ${reservations.length} reservas`);
         return reservations;
     }
 
     async findAllWithDeleted(): Promise<Reservation[]> {
-        console.log('🔍 Ejecutando findAllWithDeleted() - incluyendo eliminadas...');
         const reservations = await this.reservationsRepository.find({
             relations: ['court', 'user', 'players'],
             withDeleted: true, // Incluir registros con deletedAt no nulo
         });
-        console.log(`📊 findAllWithDeleted() encontró ${reservations.length} reservas (incluyendo eliminadas)`);
         return reservations;
     }
 
@@ -222,11 +245,26 @@ export class ReservationsService {
             throw new BadRequestException('Invalid user ID');
         }
 
-        return await this.reservationsRepository.find({
+        const reservations = await this.reservationsRepository.find({
             where: { user: { id: userId } },
             relations: ['court', 'players'],
             order: { startTime: 'DESC' },
         });
+
+        // Debug: log de las reservas para verificar los datos
+        console.log('📋 Reservations found for user:', userId);
+        reservations.forEach((res, index) => {
+            console.log(`Reservation ${index + 1}:`, {
+                id: res.id,
+                startTime: res.startTime,
+                endTime: res.endTime,
+                amount: res.amount,
+                status: res.status,
+                court: res.court?.name
+            });
+        });
+
+        return reservations;
     }
 
     async findOne(id: number): Promise<Reservation> {
@@ -293,7 +331,8 @@ export class ReservationsService {
 
     async getAvailableTimeSlots(
         courtId: number,
-        date: string
+        date: string,
+        duration: number = 90
     ): Promise<Array<{ startTime: Date; endTime: Date }>> {
         if (!Number.isInteger(courtId) || courtId <= 0) {
             throw new BadRequestException('Invalid court ID');
@@ -328,23 +367,30 @@ export class ReservationsService {
         });
 
         const availableTimeSlots: Array<{ startTime: Date; endTime: Date }> = [];
-        const slotDuration = 60; // duration in minutes
+        const requestedDuration = duration; // duración solicitada por el usuario en minutos
+        const slotInterval = 30; // intervalo entre slots posibles (30 minutos)
 
         const openingTime = new Date(date);
         openingTime.setHours(8, 0, 0, 0);
 
         const closingTime = new Date(date);
-        closingTime.setHours(22, 0, 0, 0);
+        closingTime.setHours(18, 0, 0, 0);
 
         let currentSlot = new Date(openingTime);
 
         while (currentSlot < closingTime) {
             const slotEnd = new Date(currentSlot);
-            slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);
+            slotEnd.setMinutes(slotEnd.getMinutes() + requestedDuration);
 
+            // Verificar que no exceda el horario de cierre
+            if (slotEnd > closingTime) {
+                break;
+            }
+
+            // Verificar que todo el período de la duración solicitada esté disponible
             const isAvailable = !reservations.some(reservation => {
-                return (currentSlot >= reservation.startTime && currentSlot < reservation.endTime) ||
-                    (slotEnd > reservation.startTime && slotEnd <= reservation.endTime);
+                // Verificar si hay algún conflicto en todo el período solicitado
+                return (currentSlot < reservation.endTime && slotEnd > reservation.startTime);
             });
 
             if (isAvailable) {
@@ -354,7 +400,9 @@ export class ReservationsService {
                 });
             }
 
-            currentSlot = new Date(slotEnd);
+            // Avanzar en intervalos de 30 minutos para permitir más opciones
+            currentSlot = new Date(currentSlot);
+            currentSlot.setMinutes(currentSlot.getMinutes() + slotInterval);
         }
 
         return availableTimeSlots;
@@ -410,7 +458,7 @@ export class ReservationsService {
         const openingTime = new Date(date);
         openingTime.setHours(8, 0, 0, 0);
         const closingTime = new Date(date);
-        closingTime.setHours(22, 0, 0, 0);
+        closingTime.setHours(18, 0, 0, 0);
 
         let currentSlot = new Date(openingTime);
 
@@ -447,4 +495,82 @@ export class ReservationsService {
         return timeSlots;
     }
 
+    async cancelReservation(reservationId: number, reason?: string, isAdminCancellation: boolean = false): Promise<{ success: boolean; message: string }> {
+        // Buscar la reserva con todas las relaciones necesarias
+        const reservation = await this.reservationsRepository.findOne({
+            where: { id: reservationId },
+            relations: ['user', 'court', 'players']
+        });
+
+        if (!reservation) {
+            throw new NotFoundException('Reserva no encontrada');
+        }
+
+        // Verificar que la reserva se puede cancelar
+        if (reservation.status === 'cancelled') {
+            throw new BadRequestException('Esta reserva ya está cancelada');
+        }
+
+        if (reservation.status === 'completed') {
+            throw new BadRequestException('No se puede cancelar una reserva completada');
+        }
+
+        // Verificar tiempo de cancelación (solo para usuarios, admin puede cancelar siempre)
+        if (!isAdminCancellation) {
+            const now = new Date();
+            const reservationTime = new Date(reservation.startTime);
+            const timeDiff = reservationTime.getTime() - now.getTime();
+            const hoursDiff = timeDiff / (1000 * 3600);
+
+            if (hoursDiff < 2) {
+                throw new BadRequestException('No se puede cancelar la reserva con menos de 2 horas de anticipación');
+            }
+        }
+
+        try {
+            // Actualizar estado de la reserva
+            reservation.status = 'cancelled';
+            const cancelledReservation = await this.reservationsRepository.save(reservation);
+
+            // Si la reserva estaba confirmada, devolver el dinero al usuario
+            if (reservation.status === 'confirmed') {
+                const amount = parseFloat(reservation.amount.toString());
+                await this.usersService.addBalance(reservation.userId, amount);
+                console.log(`💰 Saldo de ${amount} devuelto al usuario ${reservation.userId}`);
+            }
+
+            // Enviar email de cancelación
+            try {
+                const { EmailService } = await import('../email/email.service');
+                const emailService = new EmailService();
+                
+                await emailService.sendReservationCancellation(
+                    reservation.user.email,
+                    reservation.user.name,
+                    {
+                        id: cancelledReservation.id,
+                        courtName: reservation.court.name,
+                        date: reservation.startTime.toISOString(),
+                        startTime: reservation.startTime.toISOString(),
+                        endTime: reservation.endTime.toISOString(),
+                        cancellationReason: reason
+                    }
+                );
+                console.log('✅ Email de cancelación enviado');
+            } catch (emailError) {
+                console.error('❌ Error enviando email de cancelación:', emailError);
+                // No lanzamos el error para no afectar el flujo de cancelación
+            }
+
+            return {
+                success: true,
+                message: isAdminCancellation 
+                    ? 'Reserva cancelada por administrador y usuario notificado'
+                    : 'Reserva cancelada exitosamente y saldo reembolsado'
+            };
+        } catch (error) {
+            console.error('Error en cancelación de reserva:', error);
+            throw new BadRequestException('Error al cancelar la reserva');
+        }
+    }
 }

@@ -8,7 +8,7 @@ import { formatChileanCurrency } from '../utils/currency';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { BalanceModal } from '../components/BalanceModal';
-import { CreditCard, Key, History, Wallet, Edit2, Plus, Eye, EyeOff } from 'lucide-react';
+import { CreditCard, Key, History, Wallet, Edit2, Plus, Eye, EyeOff, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 // Interfaces para tipado
 interface Card {
@@ -35,21 +35,115 @@ interface Reservation {
     duration: number;
     total: number;
     equipment?: string[];
+    status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+    notificationType?: number; // 1 para reservas no canceladas después de tomarlas
 }
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
-    const { user,isAuthenticated , isLoading:authLoading } = useAuth();
+    const { user, isAuthenticated, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<'info' | 'security' | 'payments' | 'history'>('info');
     const [showBalance, setShowBalance] = useState(false);
     const [showAddCard, setShowAddCard] = useState(false);
     const [showTopUp, setShowTopUp] = useState(false);
     const [showBalanceModal, setShowBalanceModal] = useState(false);
     const [currentBalance, setCurrentBalance] = useState(0);
-    const [balanceLoading, setBalanceLoading] = useState(false);
+    const [balanceLoading, setBalanceLoading] = useState(false);    
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);    useEffect(() => {
+    const [error, setError] = useState<string | null>(null);
+    const [cancellingReservation, setCancellingReservation] = useState<string | null>(null);
+
+    // Función para obtener el icono y color del estado
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'pending':
+                return { icon: Clock, color: 'text-yellow-500', bgColor: 'bg-yellow-100', text: 'Pendiente' };
+            case 'confirmed':
+                return { icon: CheckCircle, color: 'text-green-500', bgColor: 'bg-green-100', text: 'Confirmada' };
+            case 'completed':
+                return { icon: CheckCircle, color: 'text-blue-500', bgColor: 'bg-blue-100', text: 'Completada' };
+            case 'cancelled':
+                return { icon: XCircle, color: 'text-red-500', bgColor: 'bg-red-100', text: 'Cancelada' };
+            default:
+                return { icon: Clock, color: 'text-gray-500', bgColor: 'bg-gray-100', text: 'Desconocido' };
+        }
+    };    // Función para verificar si debe mostrar notificación
+    const shouldShowNotification = (reservation: Reservation) => {
+        return reservation.notificationType === 1;
+    };    // Función para cancelar una reserva
+    const handleCancelReservation = async (reservationId: string) => {
+        if (!confirm('¿Estás seguro de que quieres cancelar esta reserva? Esta acción no se puede deshacer.')) {
+            return;
+        }
+
+        try {
+            setCancellingReservation(reservationId);
+            setError(null);
+            
+            // Llamar al nuevo servicio de cancelación
+            const result = await reservationService.cancelReservation(parseInt(reservationId));
+            
+            if (result.success) {
+                // Actualizar el estado local
+                setReservations(prev => 
+                    prev.map(reservation => 
+                        reservation.id === reservationId 
+                            ? { ...reservation, status: 'cancelled', notificationType: undefined }
+                            : reservation
+                    )
+                );
+                
+                alert('Reserva cancelada exitosamente.');
+            } else {
+                setError(result.message || 'Error al cancelar la reserva');
+            }
+            
+        } catch (error) {
+            console.error('Error al cancelar reserva:', error);
+            setError('Error al cancelar la reserva. Por favor, intenta nuevamente.');
+        } finally {
+            setCancellingReservation(null);
+        }
+    };    // Función para verificar si una reserva se puede cancelar
+    const canCancelReservation = (reservation: Reservation) => {
+        const reservationDate = new Date(reservation.date);
+        const now = new Date();
+        const timeDiff = reservationDate.getTime() - now.getTime();
+        
+        // Se puede cancelar si es pending o confirmed y la reserva no está en el pasado
+        return (reservation.status === 'pending' || reservation.status === 'confirmed') && timeDiff > 0;
+    };
+
+    // Nueva función para continuar el pago de una reserva pendiente
+    const handleContinuePayment = async (reservationId: string) => {
+        try {
+            setError(null);
+            setCancellingReservation(reservationId); // Usar el mismo estado para el loading
+            
+            const result = await reservationService.payReservation(parseInt(reservationId));
+            
+            if (result.success) {
+                // Actualizar el estado local
+                setReservations(prev => 
+                    prev.map(reservation => 
+                        reservation.id === reservationId 
+                            ? { ...reservation, status: 'confirmed' }
+                            : reservation
+                    )
+                );
+                
+                alert('Pago procesado exitosamente. Tu reserva ha sido confirmada.');
+            } else {
+                setError(result.message || 'Error al procesar el pago');
+            }
+        } catch (error) {
+            console.error('Error al procesar pago:', error);
+            setError('Error al procesar el pago. Por favor, intenta nuevamente.');
+        } finally {
+            setCancellingReservation(null);
+        }
+    };useEffect(() => {
         if (!authLoading && !isAuthenticated) {
             // Redirigir a la página de autenticación si no está autenticado
             navigate('/auth');
@@ -59,10 +153,9 @@ const ProfilePage: React.FC = () => {
         // Función para cargar el saldo del usuario
         const fetchUserBalance = async () => {
             if (!user?.id) return;
-            
             try {
                 setBalanceLoading(true);
-                const balance = await UserService.getUserBalance(user.id);
+                const balance = await UserService.getUserBalance(parseInt(user.id));
                 setCurrentBalance(balance);
             } catch (err) {
                 console.error('Error al cargar saldo:', err);
@@ -78,28 +171,38 @@ const ProfilePage: React.FC = () => {
             
             try {
                 setLoading(true);
-                const userReservations = await reservationService.getReservationsByUser(user.id);
-                  // Transformar los datos para que coincidan con la interfaz local
+                const userReservations = await reservationService.getReservationsByUser(parseInt(user.id));                
+                // Transformar los datos para que coincidan con la interfaz local
                 const transformedReservations: Reservation[] = userReservations.map((res: unknown) => {
                     const reservation = res as {
                         id: number;
                         court?: { name: string };
                         startTime: string;
                         endTime: string;
-                        totalAmount?: number;
+                        amount?: number;
+                        status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
                     };
+                    
+                    // Determinar tipo de notificación
+                    const notificationType = (reservation.status === 'confirmed' || reservation.status === 'completed') ? 1 : undefined;
+                    
+                    // Convertir fechas
+                    const startDate = new Date(reservation.startTime);
+                    const endDate = new Date(reservation.endTime);
                     
                     return {
                         id: reservation.id.toString(),
                         court: reservation.court?.name || 'Cancha desconocida',
-                        date: new Date(reservation.startTime).toLocaleDateString(),
-                        time: new Date(reservation.startTime).toLocaleTimeString('es-CL', { 
+                        date: reservation.startTime, // Fecha ISO de la reserva (día y hora elegidos)
+                        time: startDate.toLocaleTimeString('es-CL', { 
                             hour: '2-digit', 
                             minute: '2-digit' 
                         }),
-                        duration: Math.round((new Date(reservation.endTime).getTime() - new Date(reservation.startTime).getTime()) / (1000 * 60)),
-                        total: reservation.totalAmount || 0,
-                        equipment: []
+                        duration: Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60)), // Duración en minutos
+                        total: reservation.amount || 0,
+                        equipment: [],
+                        status: reservation.status,
+                        notificationType: notificationType
                     };
                 });
                 
@@ -189,21 +292,18 @@ const ProfilePage: React.FC = () => {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const formData = new FormData(form);
-        
         const amount = parseFloat(formData.get('amount') as string);
-        const cardId = formData.get('cardId') as string;
 
         if (amount <= 0) {
             setError('El monto debe ser mayor a 0');
             return;
-        }
-
-        try {
+        }        try {
             setLoading(true);
             setError(null);
             
             if (user?.id) {
-                const newBalance = await UserService.addBalance(user.id, amount);
+                // const cardId = formData.get('cardId') as string; // Se podría usar para seleccionar tarjeta específica
+                const newBalance = await UserService.addBalance(parseInt(user.id), amount);
                 setCurrentBalance(newBalance);
                 setShowTopUp(false);
                 form.reset();
@@ -221,7 +321,7 @@ const ProfilePage: React.FC = () => {
         if (!user?.id) return;
         
         try {
-            const newBalance = await UserService.addBalance(user.id, amount);
+            const newBalance = await UserService.addBalance(parseInt(user.id), amount);
             setCurrentBalance(newBalance);
         } catch (error) {
             console.error('Error al recargar saldo:', error);
@@ -274,7 +374,7 @@ const ProfilePage: React.FC = () => {
                                 onClick={() => setError(null)}
                                 className="float-right font-bold"
                             >
-                                ×
+                                X
                             </button>
                         </div>
                     )}
@@ -283,7 +383,7 @@ const ProfilePage: React.FC = () => {
                     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                         <div className="flex items-center space-x-4">
                             <div className="w-16 h-16 bg-[#071d40] rounded-full flex items-center justify-center text-white text-2xl">
-                                {user.firstName?.[0]}{user.lastName?.[0]}
+                                {user?.firstName?.[0] ?? ''}{user?.lastName?.[0] ?? ''}
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold text-[#071d40]">
@@ -323,15 +423,23 @@ const ProfilePage: React.FC = () => {
                             >
                                 <Wallet className="h-5 w-5" />
                                 <span>Pagos</span>
-                            </button>
-                            <button
+                            </button>                           
+                                <button
                                 onClick={() => setActiveTab('history')}
-                                className={`w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 transition-colors ${
+                                className={`w-full text-left px-4 py-3 rounded-lg flex items-center justify-between transition-colors ${
                                     activeTab === 'history' ? 'bg-[#071d40] text-white' : 'bg-white hover:bg-gray-50'
                                 }`}
-                            >
-                                <History className="h-5 w-5" />
-                                <span>Historial</span>
+                                >
+                                <div className="flex items-center space-x-3">
+                                    <History className="h-5 w-5" />
+                                    <span>Historial</span>
+                                </div>
+                                {/* Contador de notificaciones */}
+                                {reservations.some(r => shouldShowNotification(r)) && (
+                                    <div className="bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                        {reservations.filter(r => shouldShowNotification(r)).length}
+                                    </div>
+                                )}
                             </button>
                         </div>
 
@@ -471,7 +579,8 @@ const ProfilePage: React.FC = () => {
                                                     Recargar
                                                 </button>
                                             </div>
-                                        </div>                                        {/* Cards */}
+                                        </div>                                        
+                                        {/* Cards */}
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center">
                                                 <h3 className="text-lg font-medium">Tarjetas guardadas</h3>
@@ -640,53 +749,167 @@ const ProfilePage: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
-                                )}
-
+                                )} 
                                 {/* Reservation History */}
                                 {activeTab === 'history' && (
                                     <div>
                                         <h2 className="text-xl font-semibold mb-6">Historial de Reservas</h2>
+                                        
+                                        {/* Mostrar resumen de notificaciones */}
+                                        {reservations.some(r => shouldShowNotification(r)) && (
+                                            <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-400 rounded">
+                                                <div className="flex items-center">
+                                                    <AlertCircle className="h-5 w-5 text-orange-400 mr-2" />
+                                                    <p className="text-orange-700">
+                                                        Tienes reservas confirmadas que requieren tu atención. 
+                                                        Recuerda cancelar si no puedes asistir.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
                                         <div className="space-y-4">
                                             {reservations.length > 0 ? (
-                                                reservations.map(reservation => (
-                                                    <div
-                                                        key={reservation.id}
-                                                        className="border rounded-lg p-4"
-                                                    >
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <div>
-                                                                <h3 className="font-medium">{reservation.court}</h3>
-                                                                <p className="text-sm text-gray-600">
-                                                                    {new Date(reservation.date).toLocaleDateString('es-ES', {
-                                                                        weekday: 'long',
-                                                                        year: 'numeric',
-                                                                        month: 'long',
-                                                                        day: 'numeric'
-                                                                    })}
-                                                                </p>
-                                                                <p className="text-sm text-gray-600">
-                                                                    {reservation.time} ({reservation.duration} minutos)
-                                                                </p>
+                                                reservations.map(reservation => {
+                                                    const statusInfo = getStatusIcon(reservation.status);
+                                                    const StatusIcon = statusInfo.icon;
+                                                    const showNotification = shouldShowNotification(reservation);
+                                                    
+                                                    return (
+                                                        <div
+                                                            key={reservation.id}
+                                                            className={`border rounded-lg p-4 relative ${
+                                                                showNotification ? 'border-orange-300 bg-orange-50' : 'border-gray-200'
+                                                            }`}
+                                                        >
+                                                            {/* Indicador de notificación */}
+                                                            {showNotification && (
+                                                                <div className="absolute top-2 right-2">
+                                                                    <div className="flex items-center text-orange-600 text-sm">
+                                                                        <AlertCircle className="h-4 w-4 mr-1" />
+                                                                        <span className="text-xs font-medium">Requiere atención</span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <div className="flex justify-between items-start mb-3">
+                                                                <div className="flex-1">                                                                    <h3 className="font-medium text-lg">{reservation.court}</h3>
+                                                                    <p className="text-sm text-gray-600 mt-1">
+                                                                        {new Date(reservation.date).toLocaleDateString('es-ES', {
+                                                                            weekday: 'long',
+                                                                            year: 'numeric',
+                                                                            month: 'long',
+                                                                            day: 'numeric'
+                                                                        })}
+                                                                    </p>
+                                                                    <p className="text-sm text-gray-600">
+                                                                        {reservation.time} ({reservation.duration} minutos)
+                                                                    </p>
+                                                                    
+                                                                    {/* Estado de la reserva */}
+                                                                    <div className="flex items-center mt-2">
+                                                                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.color}`}>
+                                                                            <StatusIcon className="h-3 w-3 mr-1" />
+                                                                            {statusInfo.text}
+                                                                        </div>
+                                                                        {showNotification && (
+                                                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                                                Tipo 1
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="font-medium text-lg">{formatChileanCurrency(reservation.total)}</p>
+                                                                </div>
                                                             </div>
-                                                            <p className="font-medium">${reservation.total.toLocaleString()}</p>
+                                                            
+                                                            {reservation.equipment && reservation.equipment.length > 0 && (
+                                                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                                                    <p className="text-sm text-gray-600">
+                                                                        <strong>Equipamiento:</strong> {reservation.equipment.join(', ')}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                              {/* Mensaje específico para reservas con notificación */}
+                                                            {showNotification && (
+                                                                <div className="mt-3 p-3 bg-orange-100 rounded-md">
+                                                                    <p className="text-sm text-orange-800">
+                                                                        <strong>Recordatorio:</strong> Esta reserva fue confirmada. 
+                                                                        Si no puedes asistir, considera cancelarla para que otros usuarios puedan aprovechar el horario.
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                              {/* Botones de acción */}
+                                                            <div className="mt-4 flex justify-end space-x-2">
+                                                                {/* Botón de continuar pago para reservas pendientes */}
+                                                                {reservation.status === 'pending' && (
+                                                                    <button
+                                                                        onClick={() => handleContinuePayment(reservation.id)}
+                                                                        disabled={cancellingReservation === reservation.id}
+                                                                        className="px-4 py-2 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                                                    >
+                                                                        {cancellingReservation === reservation.id ? (
+                                                                            <>
+                                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                                                Procesando...
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <CheckCircle className="h-4 w-4 mr-1" />
+                                                                                Continuar Pago
+                                                                            </>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                                
+                                                                {/* Botón de cancelar - siempre visible para reservas que se pueden cancelar */}
+                                                                {canCancelReservation(reservation) && (
+                                                                    <button
+                                                                        onClick={() => handleCancelReservation(reservation.id)}
+                                                                        disabled={cancellingReservation === reservation.id}
+                                                                        className="px-4 py-2 bg-red-500 text-white text-sm rounded-md hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                                                    >
+                                                                        {cancellingReservation === reservation.id ? (
+                                                                            <>
+                                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                                                Cancelando...
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <XCircle className="h-4 w-4 mr-1" />
+                                                                                Cancelar Reserva
+                                                                            </>
+                                                                        )}
+                                                                    </button>
+                                                                )}
+                                                                
+                                                                {/* Mensaje para reservas que no se pueden cancelar */}
+                                                                {!canCancelReservation(reservation) && reservation.status !== 'pending' && (
+                                                                    <span className="text-sm text-gray-500 italic">
+                                                                        {reservation.status === 'completed' 
+                                                                            ? 'Reserva completada' 
+                                                                            : reservation.status === 'cancelled'
+                                                                            ? 'Reserva cancelada'
+                                                                            : 'No se puede modificar'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                        {reservation.equipment && reservation.equipment.length > 0 && (
-                                                            <div className="mt-2">
-                                                                <p className="text-sm text-gray-600">
-                                                                    Equipamiento: {reservation.equipment.join(', ')}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))
+                                                    );
+                                                })
                                             ) : (
                                                 <div className="text-center py-8">
                                                     <History className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                                                     <p className="text-gray-500">No tienes reservas registradas</p>
+                                                    <p className="text-sm text-gray-400 mt-2">
+                                                        Cuando realices una reserva, aparecerá aquí con su estado correspondiente
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>                                )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

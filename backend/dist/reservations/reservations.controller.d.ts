@@ -1,8 +1,10 @@
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
+import { EmailService } from '../email/email.service';
 export declare class ReservationsController {
     private readonly reservationsService;
-    constructor(reservationsService: ReservationsService);
+    private readonly emailService;
+    constructor(reservationsService: ReservationsService, emailService: EmailService);
     create(createReservationDto: CreateReservationDto): Promise<import("./entities/reservation.entity").Reservation>;
     findAll(): Promise<import("./entities/reservation.entity").Reservation[]>;
     getStats(): Promise<{
@@ -24,9 +26,16 @@ export declare class ReservationsController {
     }>;
     findAllReservations(): Promise<import("./entities/reservation.entity").Reservation[]>;
     findByUser(userId: number): Promise<import("./entities/reservation.entity").Reservation[]>;
-    getAvailableTimeSlots(courtId: number, date: string): Promise<{
+    getAvailableTimeSlots(courtId: number, date: string, duration?: number): Promise<{
         startTime: Date;
         endTime: Date;
+    }[]>;
+    getTimeSlotsWithAvailability(courtId: number, date: string): Promise<{
+        startTime: Date;
+        endTime: Date;
+        isAvailable: boolean;
+        status?: "confirmed" | "pending";
+        reservationId?: number;
     }[]>;
     processPayment(reservationId: number, userId: number): Promise<{
         success: boolean;
@@ -34,6 +43,13 @@ export declare class ReservationsController {
     }>;
     findOne(id: number): Promise<import("./entities/reservation.entity").Reservation>;
     updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<import("./entities/reservation.entity").Reservation>;
+    cancelReservation(id: number, cancelData: {
+        reason?: string;
+        isAdminCancellation?: boolean;
+    }): Promise<{
+        success: boolean;
+        message: string;
+    }>;
     testEmail(): Promise<{
         success: boolean;
         message: string;
@@ -63,4 +79,13 @@ export declare class ReservationsController {
         status?: "confirmed" | "pending";
         reservationId?: number;
     }[]>;
+    sendReminderEmails(): Promise<{
+        success: boolean;
+        message: string;
+        error?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        error: string;
+    }>;
 }

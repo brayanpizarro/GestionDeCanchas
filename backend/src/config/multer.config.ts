@@ -16,8 +16,14 @@ export const multerConfig = {
       cb(null, uploadPath);
     },
     filename: (_req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+      // Limpiar el nombre original del archivo
+      const cleanOriginalName = file.originalname
+        .replace(/[^\w\s.-]/g, '') // Remover caracteres especiales excepto espacios, puntos y guiones
+        .replace(/\s+/g, '-') // Reemplazar espacios con guiones
+        .toLowerCase(); // Convertir a minúsculas
+      
       // Generate unique filename
-      const filename = `${uuidv4()}-${file.originalname}`;
+      const filename = `${uuidv4()}-${cleanOriginalName}`;
       cb(null, filename);
     },
   }),

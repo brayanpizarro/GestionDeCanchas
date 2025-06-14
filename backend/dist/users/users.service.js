@@ -52,16 +52,18 @@ const typeorm_2 = require("typeorm");
 const user_entity_1 = require("./entities/user.entity");
 const user_types_1 = require("./types/user.types");
 const bcrypt = __importStar(require("bcrypt"));
-const email_utils_1 = require("../utils/email.utils");
+const email_service_1 = require("../email/email.service");
 let UsersService = class UsersService {
     userRepository;
-    constructor(userRepository) {
+    emailService;
+    constructor(userRepository, emailService) {
         this.userRepository = userRepository;
+        this.emailService = emailService;
     }
     async create(createUserDto) {
         const newUser = await this.userRepository.save(createUserDto);
         try {
-            await (0, email_utils_1.sendWelcomeEmail)(newUser.email, newUser.name);
+            await this.emailService.sendWelcomeEmail(newUser.email, newUser.name);
         }
         catch (error) {
             console.error('Error enviando email de bienvenida:', error);
@@ -95,7 +97,7 @@ let UsersService = class UsersService {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         await this.userRepository.update(id, { password: hashedPassword });
         try {
-            await (0, email_utils_1.sendPasswordChangeNotification)(user.email, user.name);
+            await this.emailService.sendPasswordChangeNotification(user.email, user.name);
         }
         catch (error) {
             console.error('Error enviando notificación de cambio de contraseña:', error);
@@ -223,6 +225,7 @@ exports.UsersService = UsersService;
 exports.UsersService = UsersService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        email_service_1.EmailService])
 ], UsersService);
 //# sourceMappingURL=users.service.js.map

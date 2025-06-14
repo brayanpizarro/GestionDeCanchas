@@ -23,6 +23,7 @@ let Product = class Product {
     previousStock;
     createdAt;
     updatedAt;
+    imageUrl;
 };
 exports.Product = Product;
 __decorate([

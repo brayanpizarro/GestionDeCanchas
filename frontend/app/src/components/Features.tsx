@@ -22,7 +22,7 @@ const Features: React.FC = () => {
     {
       icon: <CreditCard size={48} className="stroke-[1.5]" />,
       title: "Pagos en línea",
-      description: "Puedes pagar en línea con Mercado Pago, WebPay One Click."
+      description: "Puedes pagar en línea con tu tarjeta virtual."
     }
   ];
 

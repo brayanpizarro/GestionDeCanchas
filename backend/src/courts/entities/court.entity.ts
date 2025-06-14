@@ -27,6 +27,9 @@ export class Court {
     @Column({ nullable: true })
     capacity: number;
 
+    @Column({ type: 'boolean', default: false })
+    isCovered: boolean;
+
     @Column({ type: 'decimal', precision: 3, scale: 2, default: 4.5 })
     rating: number;
 

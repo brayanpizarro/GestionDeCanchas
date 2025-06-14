@@ -8,6 +8,7 @@ export declare class Court {
     status: string;
     type: string;
     capacity: number;
+    isCovered: boolean;
     rating: number;
     imagePath: string;
     createdAt: Date;

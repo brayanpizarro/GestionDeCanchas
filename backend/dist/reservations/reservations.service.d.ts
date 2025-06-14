@@ -3,6 +3,7 @@ import { Reservation } from './entities/reservation.entity';
 import { Court } from '../courts/entities/court.entity';
 import { User } from '../users/entities/user.entity';
 import { Player } from './entities/player.entity';
+import { EmailService } from '../email/email.service';
 import { UsersService } from '../users/users.service';
 export declare class ReservationsService {
     private readonly reservationsRepository;
@@ -10,7 +11,8 @@ export declare class ReservationsService {
     private readonly usersRepository;
     private readonly playersRepository;
     private readonly usersService;
-    constructor(reservationsRepository: Repository<Reservation>, courtsRepository: Repository<Court>, usersRepository: Repository<User>, playersRepository: Repository<Player>, usersService: UsersService);
+    private readonly emailService;
+    constructor(reservationsRepository: Repository<Reservation>, courtsRepository: Repository<Court>, usersRepository: Repository<User>, playersRepository: Repository<Player>, usersService: UsersService, emailService: EmailService);
     create(rawDto: unknown): Promise<Reservation>;
     processPayment(reservationId: number, userId: number): Promise<{
         success: boolean;
@@ -23,7 +25,7 @@ export declare class ReservationsService {
     findByUser(userId: number): Promise<Reservation[]>;
     findOne(id: number): Promise<Reservation>;
     updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<Reservation>;
-    getAvailableTimeSlots(courtId: number, date: string): Promise<Array<{
+    getAvailableTimeSlots(courtId: number, date: string, duration?: number): Promise<Array<{
         startTime: Date;
         endTime: Date;
     }>>;
@@ -34,4 +36,8 @@ export declare class ReservationsService {
         status?: 'confirmed' | 'pending';
         reservationId?: number;
     }>>;
+    cancelReservation(reservationId: number, reason?: string, isAdminCancellation?: boolean): Promise<{
+        success: boolean;
+        message: string;
+    }>;
 }

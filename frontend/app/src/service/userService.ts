@@ -18,12 +18,22 @@ export class UserService {
       throw error
     }
   }
-
   static async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/users/change-password`, {
-      method: "POST",
+    // Obtener el usuario actual del localStorage para obtener el ID
+    const userStr = localStorage.getItem('user')
+    if (!userStr) {
+      throw new Error('Usuario no autenticado')
+    }
+    const user = JSON.parse(userStr)
+    
+    const response = await fetch(`${API_BASE_URL}/users/password`, {
+      method: "PATCH",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ oldPassword, newPassword }),
+      body: JSON.stringify({ 
+        id: user.id,
+        currentPassword: oldPassword, 
+        newPassword 
+      }),
     })
 
     if (!response.ok) {

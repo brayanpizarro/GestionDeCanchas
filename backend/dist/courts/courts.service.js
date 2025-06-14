@@ -29,6 +29,7 @@ let CourtsService = class CourtsService {
         const court = this.courtsRepository.create({
             ...createCourtDto,
             rating: 4.5,
+            isCovered: createCourtDto.isCovered ?? (createCourtDto.type === 'covered'),
         });
         return await this.courtsRepository.save(court);
     }

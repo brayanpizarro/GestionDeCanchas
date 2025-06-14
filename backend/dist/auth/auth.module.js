@@ -19,6 +19,7 @@ const jwt_constants_1 = require("./constants/jwt.constants");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const jwt_strategy_1 = require("./strategy/jwt.strategy");
+const email_service_1 = require("../email/email.service");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -34,7 +35,7 @@ exports.AuthModule = AuthModule = __decorate([
             }),
         ],
         controllers: [auth_controller_1.AuthController, forgot_password_controller_1.ForgotPasswordController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, forgot_password_service_1.ForgotPasswordService],
+        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, forgot_password_service_1.ForgotPasswordService, email_service_1.EmailService],
         exports: [auth_service_1.AuthService, jwt_1.JwtModule, jwt_strategy_1.JwtStrategy, forgot_password_service_1.ForgotPasswordService],
     })
 ], AuthModule);

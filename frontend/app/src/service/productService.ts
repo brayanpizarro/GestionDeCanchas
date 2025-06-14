@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./api"
-import type { Product, CreateProductFormData } from "../types"
+import type { Product, CreateProductFormData, BackendProduct } from "../types"
 import type { Equipment } from "../types/reservation"
 
 export class ProductService {
@@ -80,18 +80,16 @@ export class ProductService {
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      const products = await response.json()
+      }      const products: BackendProduct[] = await response.json()
       console.log('Productos obtenidos:', products.length)
       
-      return products.map((product: any) => ({
-        id: product.id,
+      return products.map((product: BackendProduct) => ({
+        id: product.id.toString(),
         name: product.name,
-        description: product.description,
+        description: product.description || '',
         price: product.price,
-        stock: product.stock,
-        sold: product.sold || 0,
+        stock: product.stock || 0,
+        sold: 0, // Este campo no está en BackendProduct
         category: product.category,
         available: product.available,
         imageUrl: product.imagePath || product.imageUrl,
@@ -101,7 +99,6 @@ export class ProductService {
       throw error
     }
   }
-
   static async getAllProducts(): Promise<Equipment[]> {
     try {
       console.log('Obteniendo todos los productos...')
@@ -110,18 +107,17 @@ export class ProductService {
 
       if (!response.ok) {
         throw new Error("Error fetching products")
-      }
-
-      const products = await response.json()
+      }      const products: BackendProduct[] = await response.json()
       console.log('Todos los productos obtenidos:', products.length)
+      console.log('Primer producto (para debug):', products[0])
       
-      return products.map((product: any) => ({
+      return products.map((product: BackendProduct) => ({
         id: product.id.toString(),
         name: product.name,
-        description: product.description,
+        description: product.description || '',
         price: product.price,
         available: product.available,
-        imageUrl: product.imagePath || product.imageUrl,
+        imageUrl: product.imageUrl || product.imagePath || '',
       }))
     } catch (error) {
       console.error(" Error fetching all products:", error)
@@ -133,40 +129,54 @@ export class ProductService {
       // Validar datos del producto antes de enviar
       if (!productData.name || !productData.price || productData.stock === undefined) {
         throw new Error("Datos del producto incompletos")
-      }
-
-      console.log('Creando producto:', productData.name)
+      }      console.log('Creando producto:', productData.name)
 
       const token = this.getValidToken()
-      
-      const formData = new FormData()
-      formData.append("name", productData.name.trim())
-      formData.append("description", productData.description?.trim() || "")
-      formData.append("price", productData.price.toString())
-      formData.append("stock", productData.stock.toString())
-      formData.append("available", productData.available.toString())
-      
-      if (productData.category && productData.category.trim()) {
-        formData.append("category", productData.category.trim())
+        let body: FormData | string
+      const baseHeaders = {
+        Authorization: `Bearer ${token}`,
       }
-      
+
       if (productData.imageFile) {
-        console.log(' Archivo a subir:', {
+        // Si hay imagen, usar FormData
+        const formData = new FormData()
+        formData.append("name", productData.name.trim())
+        formData.append("description", productData.description?.trim() || "")
+        formData.append("price", productData.price.toString())
+        formData.append("stock", productData.stock.toString())
+        formData.append("available", productData.available.toString())
+        
+        if (productData.category && productData.category.trim()) {
+          formData.append("category", productData.category.trim())
+        }
+        
+        console.log('Archivo a subir:', {
           name: productData.imageFile.name,
           type: productData.imageFile.type,  
           size: productData.imageFile.size
         });
         formData.append("image", productData.imageFile)
+        
+        body = formData
+        // No incluir Content-Type para FormData - se establecerá automáticamente
+      } else {
+        // Si no hay imagen, enviar JSON
+        const jsonData = {
+          name: productData.name.trim(),
+          description: productData.description?.trim() || "",
+          price: Number(productData.price),
+          stock: Number(productData.stock),
+          available: Boolean(productData.available),
+          ...(productData.category && productData.category.trim() && { category: productData.category.trim() })
+        }
+        
+        body = JSON.stringify(jsonData)
       }
 
-      // Para FormData, no incluir Content-Type en headers
       const response = await fetch(`${API_BASE_URL}/products`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // No incluir Content-Type para FormData
-        },
-        body: formData,
+        headers: body instanceof FormData ? baseHeaders : { ...baseHeaders, 'Content-Type': 'application/json' },
+        body,
       })
 
       this.handleAuthError(response)
@@ -194,12 +204,11 @@ export class ProductService {
       const result = await response.json()
       console.log("Producto creado exitosamente:", result)
       return result
-      
-    } catch (error) {
+        } catch (error) {
       console.error("Error creating product:", error)
       
       // Si es un error de autenticación, no lo relanzamos después del manejo
-      if (error.message.includes("Sesión expirada")) {
+      if (error instanceof Error && error.message.includes("Sesión expirada")) {
         return Promise.reject(error)
       }
       
@@ -212,39 +221,54 @@ export class ProductService {
       // Validar datos del producto antes de enviar
       if (!productData.name || !productData.price || productData.stock === undefined) {
         throw new Error("Datos del producto incompletos")
-      }
-
-      console.log('Actualizando producto:', productData.name)
+      }      console.log('Actualizando producto:', productData.name)
 
       const token = this.getValidToken()
-      
-      const formData = new FormData()
-      formData.append("name", productData.name.trim())
-      formData.append("description", productData.description?.trim() || "")
-      formData.append("price", productData.price.toString())
-      formData.append("stock", productData.stock.toString())
-      formData.append("available", productData.available.toString())
-      
-      if (productData.category && productData.category.trim()) {
-        formData.append("category", productData.category.trim())
+        let body: FormData | string
+      const baseHeaders = {
+        Authorization: `Bearer ${token}`,
       }
-      
+      console.log(`Datos enviados: ${JSON.stringify(productData, null, 2)}`)
+
       if (productData.imageFile) {
-        console.log(' Archivo a subir:', {
+        // Si hay imagen, usar FormData
+        const formData = new FormData()
+        formData.append("name", productData.name.trim())
+        formData.append("description", productData.description?.trim() || "")
+        formData.append("price", productData.price.toString())
+        formData.append("stock", productData.stock.toString())
+        formData.append("available", productData.available.toString())
+        
+        if (productData.category && productData.category.trim()) {
+          formData.append("category", productData.category.trim())
+        }
+        
+        console.log('Archivo a subir:', {
           name: productData.imageFile.name,
           type: productData.imageFile.type,  
           size: productData.imageFile.size
         });
         formData.append("image", productData.imageFile)
-      }
-
-      const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+        
+        body = formData
+      } else {
+        // Si no hay imagen, enviar JSON
+        const jsonData = {
+          name: productData.name.trim(),
+          description: productData.description?.trim() || "",
+          price: Number(productData.price),
+          stock: Number(productData.stock),
+          available: Boolean(productData.available),
+          ...(productData.category && productData.category.trim() && { category: productData.category.trim() })
+        }
+        
+        body = JSON.stringify(jsonData)
+      }      const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+        method: "PATCH",
+        headers: body instanceof FormData ? baseHeaders : { ...baseHeaders, 'Content-Type': 'application/json' },
+        body,
       })
+      console.log('Respuesta de actualización:', response.status, response.statusText)
 
       this.handleAuthError(response)
 
@@ -271,11 +295,59 @@ export class ProductService {
       const result = await response.json()
       console.log("Producto actualizado exitosamente:", result)
       return result
-      
-    } catch (error) {
+        } catch (error) {
       console.error("Error updating product:", error)
       
-      if (error.message.includes("Sesión expirada")) {
+      if (error instanceof Error && error.message.includes("Sesión expirada")) {
+        return Promise.reject(error)
+      }
+      
+      throw error
+    }
+  }
+
+  static async deleteProduct(productId: string): Promise<void> {
+    try {
+      console.log('Eliminando producto:', productId)
+
+      const token = this.getValidToken()
+      
+      const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      this.handleAuthError(response)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        let errorMessage = "Error al eliminar producto"
+        
+        try {
+          const errorJson = JSON.parse(errorText)
+          errorMessage = errorJson.message || errorMessage
+        } catch {
+          errorMessage = errorText || errorMessage
+        }
+        
+        console.error("Error deleting product:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage
+        })
+        
+        throw new Error(errorMessage)
+      }
+
+      console.log("Producto eliminado exitosamente")
+    } catch (error) {
+      console.error("Error deleting product:", error)
+      
+      // Si es un error de autenticación, no lo relanzamos después del manejo
+      if (error instanceof Error && error.message.includes("Sesión expirada")) {
         return Promise.reject(error)
       }
       
@@ -349,6 +421,57 @@ export class ProductService {
       console.log('Token inválido:')
     }
   }
+
+  // Método público para obtener productos en reservaciones (sin autenticación)
+  static async getPublicProducts(): Promise<Equipment[]> {
+    try {
+      console.log('Obteniendo productos públicos para reservaciones...')
+      
+      // Intenta la petición sin autenticación primero
+      const response = await fetch(`${API_BASE_URL}/products`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        // Si falla, intentar con autenticación si está disponible
+        if (this.isAuthenticated()) {
+          console.log('Reintentando con autenticación...')
+          return await this.getAllProducts()
+        } else {
+          console.warn('No se pueden cargar productos: requiere autenticación')
+          return []
+        }
+      }      const products: BackendProduct[] = await response.json()
+      console.log('Productos públicos obtenidos:', products.length)
+        return products.map((product: BackendProduct) => ({
+        id: product.id.toString(),
+        name: product.name,
+        description: product.description || '',
+        price: product.price,
+        available: product.available,
+        imageUrl: product.imageUrl || product.imagePath || '',
+      }))
+    } catch (error) {
+      console.warn('Error cargando productos públicos, intentando con autenticación:', error)
+      
+      // Como fallback, intentar con autenticación si está disponible
+      if (this.isAuthenticated()) {
+        try {
+          return await this.getAllProducts()
+        } catch (authError) {
+          console.error('Error incluso con autenticación:', authError)
+          return []
+        }
+      }
+      
+      // Si no hay autenticación disponible, devolver array vacío
+      console.warn('No hay autenticación disponible, devolviendo array vacío de productos')
+      return []
+    }
+  }
 }
 
 // Exportar tanto la clase como la instancia para compatibilidad
@@ -357,9 +480,11 @@ export const productService = {
   getProducts: ProductService.getProducts,
   createProduct: ProductService.createProduct,
   updateProduct: ProductService.updateProduct,
+  deleteProduct: ProductService.deleteProduct,
   getProductStats: ProductService.getProductStats,
   getLowStockProducts: ProductService.getLowStockProducts,
   isAuthenticated: ProductService.isAuthenticated,
   clearSession: ProductService.clearSession,
   debugToken: ProductService.debugToken, // Para debugging
+  getPublicProducts: ProductService.getPublicProducts, // Método público para obtener productos en reservaciones
 }

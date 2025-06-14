@@ -8,6 +8,7 @@ export declare class ProductsService {
     constructor(productsRepository: Repository<Product>);
     findAll(): Promise<Product[]>;
     findOne(id: number): Promise<Product>;
+    private normalizeImagePath;
     create(createProductDto: CreateProductDto): Promise<Product>;
     update(id: number, updateProductDto: UpdateProductDto): Promise<Product>;
     remove(id: number): Promise<void>;
@@ -15,7 +16,7 @@ export declare class ProductsService {
     getStats(): Promise<{
         total: number;
         totalStock: number;
-        categories: any[];
+        categories: string[];
         lowStock: number;
     }>;
     getTotalStock(): Promise<number>;

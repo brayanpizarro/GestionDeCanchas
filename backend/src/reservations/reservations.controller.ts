@@ -1,12 +1,13 @@
 import { Controller, Get, Post, Body, Param, Put, Query, ValidationPipe, UsePipes, BadRequestException } from '@nestjs/common';
 import { ReservationsService } from './reservations.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
-import { sendReservationConfirmation } from '../utils/email.utils';
+import { EmailService } from '../email/email.service';
 
 @Controller('reservations')
 export class ReservationsController {
     constructor(
-        private readonly reservationsService: ReservationsService
+        private readonly reservationsService: ReservationsService,
+        private readonly emailService: EmailService
     ) {}
     @Post()
     @Post()
@@ -109,8 +110,17 @@ export class ReservationsController {
     getAvailableTimeSlots(
         @Param('courtId') courtId: number,
         @Query('date') date: string,
+        @Query('duration') duration?: number,
     ) {
-        return this.reservationsService.getAvailableTimeSlots(courtId, date);
+        return this.reservationsService.getAvailableTimeSlots(courtId, date, duration);
+    }
+
+    @Get('slots/:courtId')
+    getTimeSlotsWithAvailability(
+        @Param('courtId') courtId: number,
+        @Query('date') date: string,
+    ) {
+        return this.reservationsService.getTimeSlotsWithAvailability(courtId, date);
     }
     @Post(':id/pay')
     // @UseGuards(JwtAuthGuard) // Temporalmente comentado para depurar
@@ -135,6 +145,14 @@ export class ReservationsController {
         @Body('status') status: 'pending' | 'confirmed' | 'completed' | 'cancelled',
     ) {
         return this.reservationsService.updateStatus(id, status);
+    }
+
+    @Put(':id/cancel')
+    async cancelReservation(
+        @Param('id') id: number,
+        @Body() cancelData: { reason?: string; isAdminCancellation?: boolean }
+    ) {
+        return await this.reservationsService.cancelReservation(id, cancelData.reason, cancelData.isAdminCancellation);
     }
 
     @Get('test-email')
@@ -163,7 +181,7 @@ export class ReservationsController {
                 players: ['Juan Pérez', 'María González']
             };
 
-            await sendReservationConfirmation(
+            await this.emailService.sendReservationConfirmation(
                 process.env.EMAIL_USER,
                 'Usuario de Prueba',
                 testReservationData
@@ -190,5 +208,28 @@ export class ReservationsController {
         @Query('date') date: string,
     ) {
         return this.reservationsService.getTimeSlotsWithAvailability(courtId, date);
+    }
+
+    @Get('send-reminders')
+    async sendReminderEmails() {
+        try {
+            // TODO: Implementar envío de recordatorios por email
+            console.log('Función de recordatorios por email no implementada aún');
+            
+            // Simular operación async
+            await Promise.resolve();
+            
+            return {
+                success: true,
+                message: 'Función de recordatorios pendiente de implementación'
+            };
+        } catch (error) {
+            console.error('Error enviando recordatorios:', error);
+            return {
+                success: false,
+                message: 'Error enviando correos de recordatorio',
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            };
+        }
     }
 }

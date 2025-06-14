@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { toast } from "react-hot-toast"
 import { useAuth } from "../context/AuthContext"
 import Navbar from "../components/Navbar"
@@ -20,21 +20,20 @@ import type {
     Court,
     Player,
     Equipment,
+    SelectedEquipment,
     TimeSlot,
     CreateReservationDto,
 } from "../types/reservation"
 
 const ReservationPage: React.FC = () => {
     // Auth context
-    const { user, isAuthenticated, loading: authLoading } = useAuth()
-
-    // State
+    const { user, isAuthenticated, loading: authLoading } = useAuth()    // State
     const [selectedDate, setSelectedDate] = useState<Date>(new Date())
     const [selectedTime, setSelectedTime] = useState<string | null>(null)
-    const [selectedDuration] = useState<number>(90)
+    const [selectedDuration, setSelectedDuration] = useState<number>(90)
     const [selectedCourt, setSelectedCourt] = useState<number | null>(null)
     const [needsEquipment, setNeedsEquipment] = useState<boolean>(false)
-    const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
+    const [selectedEquipment, setSelectedEquipment] = useState<SelectedEquipment[]>([])
     const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([])
     const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(null)
     const [players, setPlayers] = useState<Player[]>([])
@@ -43,32 +42,49 @@ const ReservationPage: React.FC = () => {
     const [courts, setCourts] = useState<Court[]>([])
     const [equipment, setEquipment] = useState<Equipment[]>([])
     const [dataLoading, setDataLoading] = useState(true)
-    const [isLoading, setIsLoading] = useState(false)
-
-    // Payment states
+    const [isLoading, setIsLoading] = useState(false)    // Payment states
     const [showPaymentModal, setShowPaymentModal] = useState(false)
     const [createdReservationId, setCreatedReservationId] = useState<number | null>(null)
 
-    // Load initial data
+    // Referencias para scroll automático
+    const courtSectionRef = useRef<HTMLElement>(null)
+    const timeSectionRef = useRef<HTMLElement>(null)
+    const equipmentSectionRef = useRef<HTMLElement>(null)
+    const playersSectionRef = useRef<HTMLElement>(null)
+
+    // Función para scroll suave hacia una sección
+    const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
+        setTimeout(() => {
+            ref.current?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start',
+                inline: 'nearest'
+            })
+        }, 300) // Pequeño delay para que se renderice la sección
+    }// Load initial data
     useEffect(() => {
         const loadInitialData = async () => {
             try {
                 setDataLoading(true)
                 const [courtsData, equipmentData] = await Promise.allSettled([
                     CourtService.getAllCourts(),
-                    ProductService.getAllProducts(),
+                    ProductService.getPublicProducts(), // Usar el método público que no requiere autenticación
                 ])
 
                 if (courtsData.status === "fulfilled") {
                     setCourts(courtsData.value)
                 } else {
+                    console.error("Error al cargar las canchas")
                     toast.error("Error al cargar las canchas")
                 }
 
                 if (equipmentData.status === "fulfilled") {
                     setEquipment(equipmentData.value)
+                    console.log("Productos cargados exitosamente:", equipmentData.value.length)
                 } else {
-                    toast.error("Error al cargar los productos")
+                    console.warn("No se pudieron cargar los productos:", equipmentData.reason)
+                    // No mostrar error si no hay productos, puede ser normal si no está autenticado
+                    setEquipment([])
                 }
             } catch (error) {
                 console.error("Error loading initial data:", error)
@@ -95,9 +111,7 @@ const ReservationPage: React.FC = () => {
                 if (!courtToUse) {
                     setAvailableTimeSlots([])
                     return
-                }
-
-                const slots = await ReservationService.getAvailableTimeSlots(Number(courtToUse.id), formattedDate)
+                }                const slots = await ReservationService.getAvailableTimeSlots(Number(courtToUse.id), formattedDate, selectedDuration)
                 setAvailableTimeSlots(slots)
             } catch (error) {
                 console.error("Error loading time slots:", error)
@@ -108,18 +122,31 @@ const ReservationPage: React.FC = () => {
         }
 
         loadTimeSlots()
-    }, [selectedDate, selectedCourt, courts])
-
-    // Handlers
-    const handleTimeSlotSelect = (timeSlot: TimeSlot, time: string) => {
+    }, [selectedDate, selectedCourt, courts, selectedDuration])    // Handlers
+    const handleTimeSlotSelect = (time: string, duration: number, timeSlot: TimeSlot) => {
         setSelectedTimeSlot(timeSlot)
         setSelectedTime(time)
+        // Scroll automático a la sección de equipamiento
+        scrollToSection(equipmentSectionRef)
     }
 
     const handleCourtSelect = (courtId: number) => {
         setSelectedCourt(courtId)
         setSelectedTime(null)
         setSelectedTimeSlot(null)
+        // Scroll automático a la sección de horarios
+        scrollToSection(timeSectionRef)
+    }
+
+    const handleDurationChange = (duration: number) => {
+        setSelectedDuration(duration)
+        // Limpiar la selección de horario cuando cambia la duración
+        setSelectedTime(null)
+        setSelectedTimeSlot(null)
+        // Scroll automático a la sección de canchas si ya hay fecha seleccionada
+        if (selectedDate) {
+            scrollToSection(courtSectionRef)
+        }
     }
 
     const handleEquipmentDecision = (needsEq: boolean) => {
@@ -127,18 +154,54 @@ const ReservationPage: React.FC = () => {
         if (!needsEq) {
             setSelectedEquipment([])
         }
+        // Scroll automático a la sección de jugadores
+        scrollToSection(playersSectionRef)
     }
 
-    const handleToggleEquipment = (equipmentId: string) => {
-        setSelectedEquipment(prev => 
-            prev.includes(equipmentId) 
-                ? prev.filter(id => id !== equipmentId)
-                : [...prev, equipmentId]
-        )
+    const handleUpdateEquipmentQuantity = (equipmentId: string, quantity: number) => {
+        setSelectedEquipment(prev => {
+            const existing = prev.find(eq => eq.id === equipmentId)
+            
+            if (quantity === 0) {
+                // Remove equipment if quantity is 0
+                return prev.filter(eq => eq.id !== equipmentId)
+            }
+            
+            if (existing) {
+                // Update existing equipment quantity
+                return prev.map(eq => 
+                    eq.id === equipmentId 
+                        ? { ...eq, quantity }
+                        : eq
+                )
+            } else {
+                // Add new equipment
+                const equipmentItem = equipment.find(eq => eq.id === equipmentId)
+                if (equipmentItem) {
+                    return [...prev, {
+                        id: equipmentItem.id,
+                        name: equipmentItem.name,
+                        price: equipmentItem.price,
+                        quantity
+                    }]
+                }                return prev
+            }
+        })
     }
 
-    const handlePlayerChange = (updatedPlayers: Player[]) => {
-        setPlayers(updatedPlayers)
+    const handleAddPlayer = (player: Player) => {
+        setPlayers(prev => [...prev, player])
+        // Pequeño scroll para mostrar el jugador agregado (opcional)
+    }
+
+    const handleDeletePlayer = (index: number) => {
+        setPlayers(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleDateChange = (date: Date) => {
+        setSelectedDate(date)
+        // Scroll automático a la sección de canchas
+        scrollToSection(courtSectionRef)
     }
 
     // Calculate total
@@ -146,7 +209,11 @@ const ReservationPage: React.FC = () => {
         if (!selectedCourt || !courts.length) return 0
         const court = courts.find(c => c.id === selectedCourt)
         if (!court) return 0
-        return Math.round((court.price * selectedDuration) / 60)
+        
+        const courtCost = Math.round((court.price * selectedDuration) / 60) 
+        const equipmentCost = selectedEquipment.reduce((total, eq) => total + (eq.price * eq.quantity), 0)
+        
+        return courtCost + equipmentCost
     }
 
     // Handle reservation creation and payment
@@ -199,10 +266,26 @@ const ReservationPage: React.FC = () => {
 
             setCreatedReservationId(reservationId)
             setShowPaymentModal(true)
-            
-        } catch (error) {
+              } catch (error) {
             toast.dismiss()
-            const errorMessage = error instanceof Error ? error.message : "Error desconocido"
+            let errorMessage = "Error desconocido"
+            
+            if (error instanceof Error) {
+                errorMessage = error.message
+                
+                // Detectar errores específicos de horarios ocupados
+                if (errorMessage.includes('superpone') || errorMessage.includes('already reserved') || errorMessage.includes('ocupado')) {
+                    toast.error(
+                        "⚠️ ¡HORARIO NO DISPONIBLE! Este horario fue reservado por otra persona. " +
+                        "Por favor, recarga la página y selecciona otro horario disponible.",
+                        { duration: 8000 }
+                    )
+                    // Recargar los horarios disponibles
+                    window.location.reload()
+                    return
+                }
+            }
+            
             toast.error(`Error al crear la reserva: ${errorMessage}`)
         } finally {
             setIsLoading(false)
@@ -297,67 +380,81 @@ const ReservationPage: React.FC = () => {
                             <section className="bg-white rounded-lg shadow-lg p-6">
                                 <h2 className="text-xl font-semibold text-[#071d40] mb-4">
                                     1. Selecciona la fecha
-                                </h2>
-                                <ReservationCalendar
+                                </h2>                                <ReservationCalendar
                                     selectedDate={selectedDate}
-                                    onDateSelect={setSelectedDate}
+                                    onDateChange={handleDateChange}
+                                    selectedDuration={selectedDuration}
+                                    onDurationChange={handleDurationChange}
                                 />
-                            </section>
+                            </section>                            {/* Court Selection */}
+                            {selectedDate && (
+                                <section ref={courtSectionRef} className="bg-white rounded-lg shadow-lg p-6">
+                                    <h2 className="text-xl font-semibold text-[#071d40] mb-4">
+                                        2. Elige tu cancha
+                                    </h2>
+                                    <CourtSelector
+                                        courts={courts}
+                                        selectedCourt={selectedCourt}
+                                        onCourtSelect={handleCourtSelect}
+                                    />
+                                </section>
+                            )}                            {/* Time Selection */}
+                            {selectedDate && selectedCourt && (
+                                <section ref={timeSectionRef} className="bg-white rounded-lg shadow-lg p-6">
+                                    <h2 className="text-xl font-semibold text-[#071d40] mb-4">
+                                        3. Selecciona el horario
+                                    </h2>
+                                    
+                                    {/* Mensaje de advertencia sobre horarios ocupados */}
+                                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <div className="flex items-start space-x-2">
+                                            <div className="w-5 h-5 text-amber-600 mt-0.5">⚠️</div>
+                                            <div className="text-sm text-amber-800">
+                                                <strong>Importante:</strong> Solo se muestran horarios 100% disponibles. 
+                                                Si intentas reservar un horario ocupado, la reserva será rechazada automáticamente 
+                                                para evitar conflictos.
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            {/* Court Selection */}
-                            <section className="bg-white rounded-lg shadow-lg p-6">
-                                <h2 className="text-xl font-semibold text-[#071d40] mb-4">
-                                    2. Elige tu cancha
-                                </h2>
-                                <CourtSelector
-                                    courts={courts}
-                                    selectedCourt={selectedCourt}
-                                    onCourtSelect={handleCourtSelect}
-                                />
-                            </section>
-
-                            {/* Time Selection */}
-                            <section className="bg-white rounded-lg shadow-lg p-6">
-                                <h2 className="text-xl font-semibold text-[#071d40] mb-4">
-                                    3. Selecciona el horario
-                                </h2>
-                                <TimeSlotSelector
-                                    availableTimeSlots={availableTimeSlots}
-                                    selectedTime={selectedTime}
-                                    onTimeSlotSelect={handleTimeSlotSelect}
-                                    isLoading={isLoading}
-                                />
-                            </section>
-
-                            {/* Equipment */}
-                            <section className="bg-white rounded-lg shadow-lg p-6">
-                                <h2 className="text-xl font-semibold text-[#071d40] mb-4">
-                                    4. ¿Necesitas equipamiento?
-                                </h2>
-                                <EquipmentSelector
-                                    equipment={equipment}
-                                    needsEquipment={needsEquipment}
-                                    selectedEquipment={selectedEquipment}
-                                    onEquipmentDecision={handleEquipmentDecision}
-                                    onToggleEquipment={handleToggleEquipment}
-                                />
-                            </section>
-
-                            {/* Players */}
-                            <section className="bg-white rounded-lg shadow-lg p-6">
-                                <h2 className="text-xl font-semibold text-[#071d40] mb-4">
-                                    5. Agrega los jugadores
-                                </h2>
-                                <PlayerManager
-                                    players={players}
-                                    onPlayersChange={handlePlayerChange}
-                                />
-                            </section>
-                        </div>
-
-                        {/* Summary Sidebar */}
+                                    <TimeSlotSelector
+                                        availableTimeSlots={availableTimeSlots}
+                                        selectedTime={selectedTime}
+                                        selectedDuration={selectedDuration}
+                                        onTimeSelect={handleTimeSlotSelect}
+                                        isLoading={isLoading}
+                                    />
+                                </section>
+                            )}{/* Equipment */}
+                            {selectedDate && selectedCourt && selectedTime && (
+                                <section ref={equipmentSectionRef} className="bg-white rounded-lg shadow-lg p-6">
+                                    <h2 className="text-xl font-semibold text-[#071d40] mb-4">
+                                        4. ¿Necesitas equipamiento?
+                                    </h2>
+                                    <EquipmentSelector
+                                        equipment={equipment}
+                                        needsEquipment={needsEquipment}
+                                        selectedEquipment={selectedEquipment}
+                                        onEquipmentDecision={handleEquipmentDecision}
+                                        onUpdateEquipmentQuantity={handleUpdateEquipmentQuantity}
+                                    />
+                                </section>
+                            )}                            {/* Players */}
+                            {selectedDate && selectedCourt && selectedTime && (needsEquipment !== null) && (
+                                <section ref={playersSectionRef} className="bg-white rounded-lg shadow-lg p-6">
+                                    <h2 className="text-xl font-semibold text-[#071d40] mb-4">
+                                        5. Agrega los jugadores
+                                    </h2>                                    <PlayerManager
+                                        players={players}
+                                        selectedCourt={selectedCourt ? courts.find(c => c.id === selectedCourt) || null : null}
+                                        onAddPlayer={handleAddPlayer}
+                                        onDeletePlayer={handleDeletePlayer}
+                                    />
+                                </section>
+                            )}
+                        </div>                        {/* Summary Sidebar */}
                         <div className="lg:col-span-1">
-                            <div className="bg-white rounded-lg shadow-lg p-6 sticky top-4">
+                            <div className="bg-white rounded-lg shadow-lg p-6 sticky top-6 max-h-screen overflow-y-auto">
                                 <h3 className="text-xl font-semibold text-gray-900 mb-4">
                                     Resumen de Reserva
                                 </h3>
@@ -445,7 +542,7 @@ const ReservationPage: React.FC = () => {
                     onClose={() => setShowPaymentModal(false)}
                     reservationId={createdReservationId}
                     totalAmount={total}
-                    userId={user.id}
+                    userId={Number(user.id)}
                     onPaymentSuccess={handlePaymentSuccess}
                 />
             )}

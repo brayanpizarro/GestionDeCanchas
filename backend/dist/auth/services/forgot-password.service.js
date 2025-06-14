@@ -53,13 +53,15 @@ const bcrypt = __importStar(require("bcrypt"));
 const crypto = __importStar(require("crypto"));
 const password_reset_entities_1 = require("../entities/password-reset.entities");
 const user_entity_1 = require("../../users/entities/user.entity");
-const email_utils_1 = require("../../utils/email.utils");
+const email_service_1 = require("../../email/email.service");
 let ForgotPasswordService = class ForgotPasswordService {
     passwordResetTokenRepository;
     userRepository;
-    constructor(passwordResetTokenRepository, userRepository) {
+    emailService;
+    constructor(passwordResetTokenRepository, userRepository, emailService) {
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.userRepository = userRepository;
+        this.emailService = emailService;
     }
     async requestPasswordReset(email) {
         const user = await this.userRepository.findOne({ where: { email } });
@@ -80,7 +82,7 @@ let ForgotPasswordService = class ForgotPasswordService {
             expiresAt: new Date(Date.now() + 5 * 60 * 1000),
         });
         await this.passwordResetTokenRepository.save(resetToken);
-        await (0, email_utils_1.sendPasswordResetCode)(email, code, user.name || 'Usuario');
+        await this.emailService.sendPasswordResetCode(email, code, user.name || 'Usuario');
         return {
             message: 'Si el correo existe, recibirás un código de verificación',
         };
@@ -135,7 +137,7 @@ let ForgotPasswordService = class ForgotPasswordService {
             updatedAt: new Date(),
         });
         await this.passwordResetTokenRepository.update({ id: resetToken.id }, { isUsed: true });
-        await (0, email_utils_1.sendPasswordResetConfirmation)(email, user.name || 'Usuario');
+        await this.emailService.sendPasswordResetConfirmation(email, user.name || 'Usuario');
         return { message: 'Contraseña actualizada correctamente' };
     }
     async cleanupExpiredTokens() {
@@ -153,6 +155,7 @@ exports.ForgotPasswordService = ForgotPasswordService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(password_reset_entities_1.PasswordResetToken)),
     __param(1, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        email_service_1.EmailService])
 ], ForgotPasswordService);
 //# sourceMappingURL=forgot-password.service.js.map

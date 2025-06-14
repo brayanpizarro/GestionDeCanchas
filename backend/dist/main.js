@@ -57,8 +57,8 @@ async function bootstrap() {
     app.setGlobalPrefix('api/v1');
     const port = process.env.PORT || 3001;
     await app.listen(port, '0.0.0.0');
-    console.log(`🚀 Servidor corriendo en http://localhost:${port}`);
-    console.log(`📚 API disponible en http://localhost:${port}/api/v1`);
+    console.log(`Servidor corriendo en http://localhost:${port}`);
+    console.log(`API disponible en http://localhost:${port}/api/v1`);
 }
 bootstrap().catch((error) => {
     console.error('Error iniciando la aplicación:', error);

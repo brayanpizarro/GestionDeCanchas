@@ -21,6 +21,7 @@ let Court = class Court {
     status;
     type;
     capacity;
+    isCovered;
     rating;
     imagePath;
     createdAt;
@@ -60,6 +61,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Number)
 ], Court.prototype, "capacity", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'boolean', default: false }),
+    __metadata("design:type", Boolean)
+], Court.prototype, "isCovered", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 3, scale: 2, default: 4.5 }),
     __metadata("design:type", Number)

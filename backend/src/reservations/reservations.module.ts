@@ -8,6 +8,7 @@ import { User } from '../users/entities/user.entity';
 import { Player } from './entities/player.entity';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
+import { EmailService } from '../email/email.service';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { AuthModule } from '../auth/auth.module';
     forwardRef(() => UsersModule),
     forwardRef(() => AuthModule),
   ],
-  providers: [ReservationsService],
+  providers: [ReservationsService, EmailService],
   controllers: [ReservationsController],
   exports: [ReservationsService],
 })

@@ -1,10 +1,12 @@
 import { Repository } from 'typeorm';
 import { PasswordResetToken } from '../entities/password-reset.entities';
 import { User } from '../../users/entities/user.entity';
+import { EmailService } from '../../email/email.service';
 export declare class ForgotPasswordService {
     private passwordResetTokenRepository;
     private userRepository;
-    constructor(passwordResetTokenRepository: Repository<PasswordResetToken>, userRepository: Repository<User>);
+    private readonly emailService;
+    constructor(passwordResetTokenRepository: Repository<PasswordResetToken>, userRepository: Repository<User>, emailService: EmailService);
     requestPasswordReset(email: string): Promise<{
         message: string;
     }>;

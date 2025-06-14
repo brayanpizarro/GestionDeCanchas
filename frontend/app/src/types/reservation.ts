@@ -10,6 +10,8 @@ export interface Court {
     capacity?: number
     pricePerHour?: number
     status?: string
+    type?: "covered" | "uncovered"
+    isCovered?: boolean
 }
 
 export interface Player {
@@ -26,6 +28,13 @@ export interface Equipment {
     price: number
     available: boolean
     imageUrl: string
+}
+
+export interface SelectedEquipment {
+    id: string
+    name: string
+    price: number
+    quantity: number
 }
 
 export interface TimeSlot {
@@ -47,7 +56,7 @@ export interface ReservationSummary {
     date: Date
     time: string | null
     duration: number
-    equipment: Equipment[]
+    equipment: SelectedEquipment[]
     players: Player[]
     total: number
 }

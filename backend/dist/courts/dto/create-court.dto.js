@@ -15,6 +15,7 @@ const class_transformer_1 = require("class-transformer");
 class CreateCourtDto {
     name;
     type;
+    isCovered;
     imagePath;
     capacity;
     pricePerHour;
@@ -33,6 +34,20 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], CreateCourtDto.prototype, "type", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_transformer_1.Transform)(({ value }) => {
+        if (typeof value === 'string') {
+            return value.toLowerCase() === 'true' || value === 'covered';
+        }
+        if (typeof value === 'boolean') {
+            return value;
+        }
+        return false;
+    }),
+    __metadata("design:type", Boolean)
+], CreateCourtDto.prototype, "isCovered", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),

@@ -33,10 +33,9 @@ export class ReservationService {
     if (!response.ok) throw new Error("Error fetching dashboard stats")
     return response.json()
   }
-
-  static async getAvailableTimeSlots(courtId: number, date: string): Promise<TimeSlot[]> {
+  static async getAvailableTimeSlots(courtId: number, date: string, duration: number = 90): Promise<TimeSlot[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/reservations/available/${courtId}?date=${date}`, {
+      const response = await fetch(`${API_BASE_URL}/reservations/available/${courtId}?date=${date}&duration=${duration}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
           "Content-Type": "application/json",
@@ -48,6 +47,7 @@ export class ReservationService {
       }
 
       const slots = await response.json()
+      
       return slots.map((slot: any) => ({
         ...slot,
         startTime: new Date(slot.startTime),
@@ -55,6 +55,37 @@ export class ReservationService {
       }))
     } catch (error) {
       console.error("Error fetching time slots:", error)
+      throw error
+    }
+  }
+
+  static async getTimeSlotsWithAvailability(courtId: number, date: string): Promise<Array<{
+    startTime: Date;
+    endTime: Date;
+    isAvailable: boolean;
+    status?: 'confirmed' | 'pending';
+    reservationId?: number;
+  }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reservations/slots/${courtId}?date=${date}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Error fetching time slots with availability")
+      }
+
+      const slots = await response.json()
+      return slots.map((slot: any) => ({
+        ...slot,
+        startTime: new Date(slot.startTime),
+        endTime: new Date(slot.endTime),
+      }))
+    } catch (error) {
+      console.error("Error fetching time slots with availability:", error)
       throw error
     }
   }
@@ -83,7 +114,6 @@ export class ReservationService {
       throw error
     }
   }
-
   static async updateReservationStatus(
     reservationId: number,
     status: "pending" | "confirmed" | "completed" | "cancelled",
@@ -105,6 +135,33 @@ export class ReservationService {
       return response.json()
     } catch (error) {
       console.error("Error updating reservation status:", error)
+      throw error
+    }
+  }
+
+  static async cancelReservation(
+    reservationId: number,
+    reason?: string,
+    isAdminCancellation: boolean = false
+  ) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reservations/${reservationId}/cancel`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason, isAdminCancellation }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || "Error cancelling reservation")
+      }
+
+      return response.json()
+    } catch (error) {
+      console.error("Error cancelling reservation:", error)
       throw error
     }
   }
@@ -193,6 +250,7 @@ export const reservationService = {
   getAvailableTimeSlots: ReservationService.getAvailableTimeSlots,
   createReservation: ReservationService.createReservation,
   updateReservationStatus: ReservationService.updateReservationStatus,
+  cancelReservation: ReservationService.cancelReservation,
   getReservationsByUser: ReservationService.getReservationsByUser,
   getReservations: ReservationService.getReservations,
   getReservationStats: ReservationService.getReservationStats,

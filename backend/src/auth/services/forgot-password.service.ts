@@ -9,10 +9,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PasswordResetToken } from '../entities/password-reset.entities';
 import { User } from '../../users/entities/user.entity'; // Asume que tienes una entidad User
-import {
-  sendPasswordResetCode,
-  sendPasswordResetConfirmation,
-} from 'utils/email.utils';
+import { EmailService } from '../../email/email.service';
 
 @Injectable()
 export class ForgotPasswordService {
@@ -21,6 +18,7 @@ export class ForgotPasswordService {
     private passwordResetTokenRepository: Repository<PasswordResetToken>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -56,7 +54,7 @@ export class ForgotPasswordService {
     await this.passwordResetTokenRepository.save(resetToken);
 
     // Enviar correo con el código
-    await sendPasswordResetCode(email, code, user.name || 'Usuario');
+    await this.emailService.sendPasswordResetCode(email, code, user.name || 'Usuario');
 
     return {
       message: 'Si el correo existe, recibirás un código de verificación',
@@ -149,7 +147,7 @@ export class ForgotPasswordService {
     );
 
     // Enviar confirmación por correo
-    await sendPasswordResetConfirmation(email, user.name || 'Usuario');
+    await this.emailService.sendPasswordResetConfirmation(email, user.name || 'Usuario');
 
     return { message: 'Contraseña actualizada correctamente' };
   }

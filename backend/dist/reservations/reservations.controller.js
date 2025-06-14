@@ -16,11 +16,13 @@ exports.ReservationsController = void 0;
 const common_1 = require("@nestjs/common");
 const reservations_service_1 = require("./reservations.service");
 const create_reservation_dto_1 = require("./dto/create-reservation.dto");
-const email_utils_1 = require("../utils/email.utils");
+const email_service_1 = require("../email/email.service");
 let ReservationsController = class ReservationsController {
     reservationsService;
-    constructor(reservationsService) {
+    emailService;
+    constructor(reservationsService, emailService) {
         this.reservationsService = reservationsService;
+        this.emailService = emailService;
     }
     async create(createReservationDto) {
         try {
@@ -91,8 +93,11 @@ let ReservationsController = class ReservationsController {
     findByUser(userId) {
         return this.reservationsService.findByUser(userId);
     }
-    getAvailableTimeSlots(courtId, date) {
-        return this.reservationsService.getAvailableTimeSlots(courtId, date);
+    getAvailableTimeSlots(courtId, date, duration) {
+        return this.reservationsService.getAvailableTimeSlots(courtId, date, duration);
+    }
+    getTimeSlotsWithAvailability(courtId, date) {
+        return this.reservationsService.getTimeSlotsWithAvailability(courtId, date);
     }
     async processPayment(reservationId, userId) {
         const finalUserId = userId || 1;
@@ -103,6 +108,9 @@ let ReservationsController = class ReservationsController {
     }
     updateStatus(id, status) {
         return this.reservationsService.updateStatus(id, status);
+    }
+    async cancelReservation(id, cancelData) {
+        return await this.reservationsService.cancelReservation(id, cancelData.reason, cancelData.isAdminCancellation);
     }
     async testEmail() {
         console.log('🧪 Endpoint de prueba de email llamado');
@@ -126,7 +134,7 @@ let ReservationsController = class ReservationsController {
                 duration: 60,
                 players: ['Juan Pérez', 'María González']
             };
-            await (0, email_utils_1.sendReservationConfirmation)(process.env.EMAIL_USER, 'Usuario de Prueba', testReservationData);
+            await this.emailService.sendReservationConfirmation(process.env.EMAIL_USER, 'Usuario de Prueba', testReservationData);
             return {
                 success: true,
                 message: 'Email de prueba enviado exitosamente',
@@ -144,6 +152,24 @@ let ReservationsController = class ReservationsController {
     }
     async getAvailability(courtId, date) {
         return this.reservationsService.getTimeSlotsWithAvailability(courtId, date);
+    }
+    async sendReminderEmails() {
+        try {
+            console.log('Función de recordatorios por email no implementada aún');
+            await Promise.resolve();
+            return {
+                success: true,
+                message: 'Función de recordatorios pendiente de implementación'
+            };
+        }
+        catch (error) {
+            console.error('Error enviando recordatorios:', error);
+            return {
+                success: false,
+                message: 'Error enviando correos de recordatorio',
+                error: error instanceof Error ? error.message : 'Error desconocido'
+            };
+        }
     }
 };
 exports.ReservationsController = ReservationsController;
@@ -191,10 +217,19 @@ __decorate([
     (0, common_1.Get)('available/:courtId'),
     __param(0, (0, common_1.Param)('courtId')),
     __param(1, (0, common_1.Query)('date')),
+    __param(2, (0, common_1.Query)('duration')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, Number]),
+    __metadata("design:returntype", void 0)
+], ReservationsController.prototype, "getAvailableTimeSlots", null);
+__decorate([
+    (0, common_1.Get)('slots/:courtId'),
+    __param(0, (0, common_1.Param)('courtId')),
+    __param(1, (0, common_1.Query)('date')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", void 0)
-], ReservationsController.prototype, "getAvailableTimeSlots", null);
+], ReservationsController.prototype, "getTimeSlotsWithAvailability", null);
 __decorate([
     (0, common_1.Post)(':id/pay'),
     __param(0, (0, common_1.Param)('id')),
@@ -219,6 +254,14 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "updateStatus", null);
 __decorate([
+    (0, common_1.Put)(':id/cancel'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "cancelReservation", null);
+__decorate([
     (0, common_1.Get)('test-email'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
@@ -232,8 +275,15 @@ __decorate([
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", Promise)
 ], ReservationsController.prototype, "getAvailability", null);
+__decorate([
+    (0, common_1.Get)('send-reminders'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "sendReminderEmails", null);
 exports.ReservationsController = ReservationsController = __decorate([
     (0, common_1.Controller)('reservations'),
-    __metadata("design:paramtypes", [reservations_service_1.ReservationsService])
+    __metadata("design:paramtypes", [reservations_service_1.ReservationsService,
+        email_service_1.EmailService])
 ], ReservationsController);
 //# sourceMappingURL=reservations.controller.js.map

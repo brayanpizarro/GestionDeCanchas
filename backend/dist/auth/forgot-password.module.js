@@ -13,6 +13,7 @@ const forgot_password_controller_1 = require("../auth/forgot-password.controller
 const forgot_password_service_1 = require("../auth/services/forgot-password.service");
 const password_reset_entities_1 = require("../auth/entities/password-reset.entities");
 const user_entity_1 = require("../users/entities/user.entity");
+const email_service_1 = require("../email/email.service");
 let ForgotPasswordModule = class ForgotPasswordModule {
 };
 exports.ForgotPasswordModule = ForgotPasswordModule;
@@ -20,7 +21,7 @@ exports.ForgotPasswordModule = ForgotPasswordModule = __decorate([
     (0, common_1.Module)({
         imports: [typeorm_1.TypeOrmModule.forFeature([password_reset_entities_1.PasswordResetToken, user_entity_1.User])],
         controllers: [forgot_password_controller_1.ForgotPasswordController],
-        providers: [forgot_password_service_1.ForgotPasswordService],
+        providers: [forgot_password_service_1.ForgotPasswordService, email_service_1.EmailService],
         exports: [forgot_password_service_1.ForgotPasswordService],
     })
 ], ForgotPasswordModule);

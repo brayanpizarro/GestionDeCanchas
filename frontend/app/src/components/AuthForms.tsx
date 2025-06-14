@@ -7,6 +7,7 @@ import { register } from "../service/authService"
 import { useAuth } from "../context/AuthContext"
 import { ForgotPasswordFlow } from "./ForgotPasswordFlow"
 
+
 interface FormData {
     firstName: string
     lastName: string

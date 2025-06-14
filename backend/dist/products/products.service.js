@@ -26,7 +26,11 @@ let ProductsService = ProductsService_1 = class ProductsService {
     }
     async findAll() {
         try {
-            return await this.productsRepository.find();
+            const products = await this.productsRepository.find();
+            return products.map(product => ({
+                ...product,
+                imageUrl: product.imagePath ? this.normalizeImagePath(product.imagePath) : undefined
+            }));
         }
         catch (error) {
             this.logger.error('Error finding all products:', error);
@@ -39,7 +43,10 @@ let ProductsService = ProductsService_1 = class ProductsService {
             if (!product) {
                 throw new common_1.NotFoundException(`Product with ID ${id} not found`);
             }
-            return product;
+            return {
+                ...product,
+                imageUrl: product.imagePath ? this.normalizeImagePath(product.imagePath) : undefined
+            };
         }
         catch (error) {
             if (error instanceof common_1.NotFoundException) {
@@ -48,6 +55,15 @@ let ProductsService = ProductsService_1 = class ProductsService {
             this.logger.error(`Error finding product with ID ${id}:`, error);
             throw new common_1.InternalServerErrorException('Failed to retrieve product');
         }
+    }
+    normalizeImagePath(imagePath) {
+        if (!imagePath)
+            return '';
+        let cleanPath = imagePath.replace(/^\/+uploads\/+/g, '');
+        cleanPath = cleanPath.replace(/^uploads\/+/g, '');
+        const finalPath = `/uploads/${cleanPath}`;
+        this.logger.debug(`Normalized image path: ${imagePath} -> ${finalPath}`);
+        return finalPath;
     }
     async create(createProductDto) {
         try {
@@ -133,8 +149,8 @@ let ProductsService = ProductsService_1 = class ProductsService {
             ]);
             return {
                 total: totalCount,
-                totalStock: parseInt(totalStockResult?.totalStock) || 0,
-                categories: categoriesResult.map(c => c.category).filter(Boolean),
+                totalStock: parseInt(totalStockResult && totalStockResult.totalStock ? totalStockResult.totalStock : '0') || 0,
+                categories: categoriesResult.map(c => c.category).filter((cat) => Boolean(cat)),
                 lowStock: lowStockCount
             };
         }
@@ -149,7 +165,12 @@ let ProductsService = ProductsService_1 = class ProductsService {
                 .createQueryBuilder('product')
                 .select('SUM(product.stock)', 'totalStock')
                 .getRawOne();
-            return parseInt(result?.totalStock) || 0;
+            const totalStock = result?.totalStock;
+            if (!totalStock || totalStock === null) {
+                return 0;
+            }
+            const parsed = parseInt(totalStock, 10);
+            return isNaN(parsed) ? 0 : parsed;
         }
         catch (error) {
             this.logger.error('Error getting total stock:', error);

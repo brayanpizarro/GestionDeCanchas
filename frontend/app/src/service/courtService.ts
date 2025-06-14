@@ -37,9 +37,7 @@ export class CourtService {
 
       if (!response.ok) {
         throw new Error("Error fetching courts")
-      }
-
-      const courtsData = await response.json()
+      }      const courtsData = await response.json()
       return courtsData.map((court: any) => ({
         id: court.id,
         name: court.name,
@@ -52,6 +50,8 @@ export class CourtService {
         capacity: court.capacity,
         pricePerHour: court.pricePerHour,
         status: court.status,
+        type: court.type,
+        isCovered: court.isCovered,
       }))
     } catch (error) {
       console.error("Error fetching courts:", error)

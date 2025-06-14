@@ -12,6 +12,7 @@ export interface Court {
   id: string
   name: string
   type: "covered" | "uncovered"
+  isCovered?: boolean
   status: "available" | "occupied" | "maintenance"
   capacity: number
   pricePerHour: number
@@ -35,6 +36,22 @@ export interface Product {
   sold: number
   category?: string
   description?: string
+  available?: boolean
+  imageUrl?: string
+  imagePath?: string
+}
+
+// Interfaz para productos del backend (pueden tener diferentes campos)
+export interface BackendProduct {
+  id: number | string
+  name: string
+  description?: string
+  price: number
+  stock?: number
+  available: boolean
+  category?: string
+  imageUrl?: string
+  imagePath?: string
 }
 
 export interface User {
@@ -52,6 +69,7 @@ export interface User {
 export interface CreateCourtFormData {
   name: string
   type: "covered" | "uncovered"
+  isCovered?: boolean
   status: "available" | "occupied" | "maintenance"
   capacity: number
   pricePerHour: number

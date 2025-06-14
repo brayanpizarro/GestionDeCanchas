@@ -19,10 +19,10 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({
   onSubmit, 
   editData,
   isEditing = false 
-}) => {
-  const [formData, setFormData] = useState<CreateCourtFormData>({
+}) => {  const [formData, setFormData] = useState<CreateCourtFormData>({
     name: "",
     type: "covered",
+    isCovered: true,
     status: "available",
     capacity: 4,
     pricePerHour: 0,
@@ -33,11 +33,11 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({
   // Effect to populate form with edit data
   useEffect(() => {
     if (isEditing && editData) {
-      setFormData(editData)
-    } else if (!isEditing) {
+      setFormData(editData)    } else if (!isEditing) {
       setFormData({
         name: "",
         type: "covered",
+        isCovered: true,
         status: "available",
         capacity: 4,
         pricePerHour: 0,
@@ -98,13 +98,18 @@ const CreateCourtModal: React.FC<CreateCourtModalProps> = ({
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
               required
             />
-          </div>
-
-          <div>
+          </div>          <div>
             <label className="block text-sm font-medium text-gray-700">Tipo</label>
             <select
               value={formData.type}
-              onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as "covered" | "uncovered" }))}
+              onChange={(e) => {
+                const newType = e.target.value as "covered" | "uncovered";
+                setFormData((prev) => ({ 
+                  ...prev, 
+                  type: newType,
+                  isCovered: newType === "covered"
+                }))
+              }}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
             >
               <option value="covered">Cubierta</option>

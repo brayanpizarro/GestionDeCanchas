@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsNotEmpty, IsString, Min, IsOptional, IsNumber } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsString, Min, IsOptional, IsNumber, IsBoolean } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
 export class CreateCourtDto {
@@ -11,6 +11,19 @@ export class CreateCourtDto {
     message: 'El tipo debe ser "covered" o "uncovered"'
   })
   type: 'covered' | 'uncovered';
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true' || value === 'covered';
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    return false;
+  })
+  isCovered?: boolean;
   
   @IsOptional()
   @IsString()

@@ -58,14 +58,14 @@ const ImportantRulesModal: React.FC<ImportantRulesModalProps> = ({
 
                     {/* Important Rules */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-900">⚠️ REGLAS IMPORTANTES - LÉELAS DETENIDAMENTE</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">REGLAS IMPORTANTES - LÉELAS DETENIDAMENTE</h3>
                         
                         {/* Rule 1 */}
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                             <div className="flex items-start space-x-3">
                                 <Clock className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                                 <div>
-                                    <h4 className="font-semibold text-red-900">🕐 PUNTUALIDAD OBLIGATORIA</h4>
+                                    <h4 className="font-semibold text-red-900">PUNTUALIDAD OBLIGATORIA</h4>
                                     <p className="text-red-800 text-sm mt-1">
                                         <strong>DEBES LLEGAR EXACTAMENTE A LA HORA DE INICIO</strong> de tu reserva ({reservationDetails.time}). 
                                         Si llegas tarde, <strong>NO se te entregará la cancha</strong> y perderás tu reserva sin reembolso.
@@ -79,38 +79,10 @@ const ImportantRulesModal: React.FC<ImportantRulesModalProps> = ({
                             <div className="flex items-start space-x-3">
                                 <Ban className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
                                 <div>
-                                    <h4 className="font-semibold text-orange-900">❌ POLÍTICA DE CANCELACIÓN</h4>
+                                    <h4 className="font-semibold text-orange-900">POLÍTICA DE CANCELACIÓN</h4>
                                     <p className="text-orange-800 text-sm mt-1">
                                         Las cancelaciones deben realizarse con <strong>MÍNIMO 1 SEMANA DE ANTICIPACIÓN</strong>. 
                                         Cancelaciones con menos tiempo no serán procesadas y se cobrará la reserva completa.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Rule 3 */}
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-start space-x-3">
-                                <Calendar className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <h4 className="font-semibold text-blue-900">📅 HORARIOS DISPONIBLES</h4>
-                                    <p className="text-blue-800 text-sm mt-1">
-                                        Las reservas solo están disponibles de <strong>Lunes a Viernes</strong>. 
-                                        No hay servicio los fines de semana. Las reservas deben hacerse con al menos 1 semana de anticipación.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Rule 4 */}
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                            <div className="flex items-start space-x-3">
-                                <Phone className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <h4 className="font-semibold text-green-900">📱 CONTACTO DE EMERGENCIA</h4>
-                                    <p className="text-green-800 text-sm mt-1">
-                                        Para emergencias el día de la reserva, contacta inmediatamente al: 
-                                        <strong className="bg-green-100 px-2 py-1 rounded ml-1">+56 9 XXXX XXXX</strong>
                                     </p>
                                 </div>
                             </div>
@@ -119,7 +91,7 @@ const ImportantRulesModal: React.FC<ImportantRulesModalProps> = ({
 
                     {/* Email notification info */}
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-900 mb-2">📧 Notificación por Email</h4>
+                        <h4 className="font-semibold text-gray-900 mb-2">Notificación por Email</h4>
                         <p className="text-gray-700 text-sm">
                             Recibirás un email de confirmación con todos estos detalles y recordatorios. 
                             Asegúrate de revisar tu bandeja de entrada y spam.

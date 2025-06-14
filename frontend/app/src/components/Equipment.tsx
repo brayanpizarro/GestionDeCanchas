@@ -20,7 +20,6 @@ const Equipment: React.FC = () => {
           </h2>
           
           <Link to="/reservation" className="mt-4 md:mt-6 inline-flex items-center bg-white hover:bg-gray-100 text-[#0A1838] px-4 md:px-6 py-2 md:py-3 rounded-full text-sm md:text-lg font-medium transition-all duration-300 hover:shadow-lg">
-            <span className="mr-2">🎾</span>
             <span className="hidden sm:inline">Reserva los equipamientos aquí</span>
             <span className="sm:hidden">Reservar equipos</span>
           </Link>

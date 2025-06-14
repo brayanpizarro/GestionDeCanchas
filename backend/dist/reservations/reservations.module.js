@@ -17,6 +17,7 @@ const user_entity_1 = require("../users/entities/user.entity");
 const player_entity_1 = require("./entities/player.entity");
 const users_module_1 = require("../users/users.module");
 const auth_module_1 = require("../auth/auth.module");
+const email_service_1 = require("../email/email.service");
 let ReservationsModule = class ReservationsModule {
 };
 exports.ReservationsModule = ReservationsModule;
@@ -27,7 +28,7 @@ exports.ReservationsModule = ReservationsModule = __decorate([
             (0, common_1.forwardRef)(() => users_module_1.UsersModule),
             (0, common_1.forwardRef)(() => auth_module_1.AuthModule),
         ],
-        providers: [reservations_service_1.ReservationsService],
+        providers: [reservations_service_1.ReservationsService, email_service_1.EmailService],
         controllers: [reservations_controller_1.ReservationsController],
         exports: [reservations_service_1.ReservationsService],
     })

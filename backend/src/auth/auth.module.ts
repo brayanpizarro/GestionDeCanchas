@@ -10,6 +10,7 @@ import { jwtConstanst } from './constants/jwt.constants';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategy/jwt.strategy';
+import { EmailService } from '../email/email.service';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { JwtStrategy } from './strategy/jwt.strategy';
     }),
   ],
   controllers: [AuthController, ForgotPasswordController],
-  providers: [AuthService, JwtStrategy, ForgotPasswordService],
+  providers: [AuthService, JwtStrategy, ForgotPasswordService, EmailService],
   exports: [AuthService, JwtModule, JwtStrategy, ForgotPasswordService],
 })
 export class AuthModule {}

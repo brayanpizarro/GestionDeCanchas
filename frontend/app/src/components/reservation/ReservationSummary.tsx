@@ -66,9 +66,7 @@ const ReservationSummaryComponent: React.FC<ReservationSummaryProps> = ({ summar
                 </p>
                 </div>
             </div>
-            )}
-
-            {equipment.length > 0 && (
+            )}            {equipment.length > 0 && (
             <div className="flex items-start space-x-3">
                 <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <Package className="w-4 h-4 text-orange-600" />
@@ -77,8 +75,15 @@ const ReservationSummaryComponent: React.FC<ReservationSummaryProps> = ({ summar
                 <p className="text-xs sm:text-sm text-gray-500">Equipamiento</p>
                 <ul className="space-y-1">
                     {equipment.map((eq) => (
-                    <li key={eq.id} className="text-xs sm:text-sm font-medium text-gray-900">
-                        {eq.name} - ${eq.price.toLocaleString()}
+                    <li key={eq.id} className="text-xs sm:text-sm text-gray-900">
+                        <div className="flex justify-between items-center">
+                            <span className="font-medium">{eq.name}</span>
+                            <span className="text-gray-600">x{eq.quantity}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-gray-500">
+                            <span>{formatChileanCurrency(eq.price)}/unidad</span>
+                            <span className="font-medium">{formatChileanCurrency(eq.price * eq.quantity)}</span>
+                        </div>
                     </li>
                     ))}
                 </ul>

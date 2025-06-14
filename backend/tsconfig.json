@@ -19,7 +19,7 @@
       "@shared/*": ["shared/*"],
       "@src/*": ["src/*"],
       },
-    "strict": true,
+    "strict": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,

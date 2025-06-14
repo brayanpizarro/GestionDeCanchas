@@ -19,6 +19,7 @@ export class CourtsService {
         const court = this.courtsRepository.create({
             ...createCourtDto,
             rating: 4.5, // Valor por defecto
+            isCovered: createCourtDto.isCovered ?? (createCourtDto.type === 'covered'), // Auto-derivar del tipo si no se especifica
         });
         return await this.courtsRepository.save(court);
     }

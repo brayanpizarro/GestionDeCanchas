@@ -5,13 +5,13 @@ export declare class ProductsController {
     private readonly productsService;
     private readonly logger;
     constructor(productsService: ProductsService);
-    create(createProductDto: CreateProductDto, file: Express.Multer.File): Promise<import("./entities/product.entity").Product>;
     findAll(): Promise<import("./entities/product.entity").Product[]>;
+    create(createProductDto: CreateProductDto, file: Express.Multer.File): Promise<import("./entities/product.entity").Product>;
     getLowStockProducts(): Promise<import("./entities/product.entity").Product[]>;
     getStats(): Promise<{
         total: number;
         totalStock: number;
-        categories: any[];
+        categories: string[];
         lowStock: number;
     }>;
     findOne(id: string): Promise<import("./entities/product.entity").Product>;

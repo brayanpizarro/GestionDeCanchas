@@ -27,6 +27,15 @@ let ProductsController = ProductsController_1 = class ProductsController {
     constructor(productsService) {
         this.productsService = productsService;
     }
+    async findAll() {
+        try {
+            return await this.productsService.findAll();
+        }
+        catch (error) {
+            this.logger.error('Error in findAll controller:', error);
+            throw error;
+        }
+    }
     async create(createProductDto, file) {
         try {
             this.logger.log('Received create product request:', {
@@ -52,15 +61,6 @@ let ProductsController = ProductsController_1 = class ProductsController {
                 throw error;
             }
             throw new common_1.HttpException('Failed to create product', common_1.HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-    async findAll() {
-        try {
-            return await this.productsService.findAll();
-        }
-        catch (error) {
-            this.logger.error('Error in findAll controller:', error);
-            throw error;
         }
     }
     async getLowStockProducts() {
@@ -92,11 +92,47 @@ let ProductsController = ProductsController_1 = class ProductsController {
     }
     async update(id, updateProductDto, file) {
         try {
+            this.logger.log('Received update product request:', {
+                id,
+                dto: updateProductDto,
+                hasFile: !!file,
+                types: {
+                    price: typeof updateProductDto.price,
+                    stock: typeof updateProductDto.stock,
+                    available: typeof updateProductDto.available
+                }
+            });
             const productData = { ...updateProductDto };
+            if (productData.price !== undefined) {
+                productData.price = typeof productData.price === 'string'
+                    ? parseFloat(productData.price)
+                    : productData.price;
+            }
+            if (productData.stock !== undefined) {
+                productData.stock = typeof productData.stock === 'string'
+                    ? parseInt(productData.stock, 10)
+                    : productData.stock;
+            }
+            if (productData.available !== undefined) {
+                if (typeof productData.available === 'string') {
+                    productData.available = productData.available.toLowerCase() === 'true';
+                }
+            }
             if (file) {
                 productData.imagePath = file.path.replace(/\\/g, '/');
+                this.logger.log('Added image path:', productData.imagePath);
             }
-            return await this.productsService.update(+id, productData);
+            this.logger.log('Transformed product data:', {
+                ...productData,
+                types: {
+                    price: typeof productData.price,
+                    stock: typeof productData.stock,
+                    available: typeof productData.available
+                }
+            });
+            const result = await this.productsService.update(+id, productData);
+            this.logger.log('Product updated successfully:', result.id);
+            return result;
         }
         catch (error) {
             this.logger.error(`Error in update controller for ID ${id}:`, error);
@@ -116,7 +152,14 @@ let ProductsController = ProductsController_1 = class ProductsController {
 };
 exports.ProductsController = ProductsController;
 __decorate([
+    (0, common_1.Get)(),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "findAll", null);
+__decorate([
     (0, common_1.Post)(),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('image', multer_config_1.multerConfig)),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.UploadedFile)()),
@@ -125,19 +168,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "create", null);
 __decorate([
-    (0, common_1.Get)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ProductsController.prototype, "findAll", null);
-__decorate([
     (0, common_1.Get)('low-stock'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "getLowStockProducts", null);
 __decorate([
     (0, common_1.Get)('stats'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
@@ -151,6 +190,7 @@ __decorate([
 ], ProductsController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('image', multer_config_1.multerConfig)),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -161,6 +201,7 @@ __decorate([
 ], ProductsController.prototype, "update", null);
 __decorate([
     (0, common_1.Delete)(':id'),
+    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -168,7 +209,6 @@ __decorate([
 ], ProductsController.prototype, "remove", null);
 exports.ProductsController = ProductsController = ProductsController_1 = __decorate([
     (0, common_1.Controller)('products'),
-    (0, common_1.UseGuards)(auth_guard_1.AuthGuard),
     __metadata("design:paramtypes", [products_service_1.ProductsService])
 ], ProductsController);
 //# sourceMappingURL=products.controller.js.map

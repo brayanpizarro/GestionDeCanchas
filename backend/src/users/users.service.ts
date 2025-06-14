@@ -7,7 +7,7 @@ import { User } from './entities/user.entity';
 import { UserRole, UserStats } from './types/user.types';
 import { TopPlayerRaw } from './types/top-player.types';
 import * as bcrypt from 'bcrypt';
-import { sendWelcomeEmail, sendPasswordChangeNotification } from '../utils/email.utils';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class UsersService {
@@ -15,7 +15,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User) //inyectar el repositorio de usuario
     //el repositorio es una clase que se encarga de interactuar con la base de datos
-    private readonly userRepository: Repository<User>, 
+    private readonly userRepository: Repository<User>,
+    private readonly emailService: EmailService
   ) {}
 
   async create(createUserDto: CreateUserDto) { //crear un nuevo usuario
@@ -24,7 +25,7 @@ export class UsersService {
     
     // Enviar email de bienvenida
     try {
-      await sendWelcomeEmail(newUser.email, newUser.name);
+      await this.emailService.sendWelcomeEmail(newUser.email, newUser.name);
     } catch (error) {
       console.error('Error enviando email de bienvenida:', error);
       // No fallar la creación del usuario si el email falla
@@ -67,7 +68,7 @@ export class UsersService {
     
     // Enviar notificación por email del cambio de contraseña
     try {
-      await sendPasswordChangeNotification(user.email, user.name);
+      await this.emailService.sendPasswordChangeNotification(user.email, user.name);
     } catch (error) {
       console.error('Error enviando notificación de cambio de contraseña:', error);
       // No fallar la actualización si el email falla

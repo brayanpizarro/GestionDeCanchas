@@ -2,8 +2,9 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Plus, Trash2, Users } from "lucide-react"
+import { Plus, Trash2, Users, AlertCircle } from "lucide-react"
 import type { Player, Court } from "../../types/reservation"
+import { isValidRut, formatRut, cleanRut, getRutErrorMessage } from "../../utils/rutValidator"
 
 interface PlayerManagerProps {
     players: Player[]
@@ -20,15 +21,50 @@ const PlayerManager: React.FC<PlayerManagerProps> = ({ players, selectedCourt, o
         rut: "",
         age: 0,
     })
+    const [rutError, setRutError] = useState<string | null>(null)
+
+    const handleRutChange = (value: string) => {
+        // Limpiar y formatear el RUT mientras se escribe
+        const cleaned = cleanRut(value)
+        if (cleaned.length <= 9) { // Máximo 8 dígitos + 1 verificador
+            const formatted = value.length > currentPlayer.rut.length ? formatRut(cleaned) : value
+            setCurrentPlayer({ ...currentPlayer, rut: formatted })
+            
+            // Validar solo si hay algo escrito
+            if (cleaned.length >= 8) {
+                const error = getRutErrorMessage(formatted)
+                setRutError(error)
+            } else {
+                setRutError(null)
+            }
+        }
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        if (selectedCourt && players.length >= selectedCourt.maxPlayers) {
-        alert(`Esta cancha tiene un máximo de ${selectedCourt.maxPlayers} jugadores`)
-        return
+        
+        // Validar RUT antes de enviar
+        const rutValidationError = getRutErrorMessage(currentPlayer.rut)
+        if (rutValidationError) {
+            setRutError(rutValidationError)
+            return
         }
+        
+        // Verificar que el RUT no esté duplicado
+        const rutExists = players.some(player => cleanRut(player.rut) === cleanRut(currentPlayer.rut))
+        if (rutExists) {
+            setRutError('Este RUT ya está registrado en la reserva')
+            return
+        }
+        
+        if (selectedCourt && players.length >= selectedCourt.maxPlayers) {
+            alert(`Esta cancha tiene un máximo de ${selectedCourt.maxPlayers} jugadores`)
+            return
+        }
+        
         onAddPlayer(currentPlayer)
         setCurrentPlayer({ firstName: "", lastName: "", rut: "", age: 0 })
+        setRutError(null)
         setShowPlayerForm(false)
     }
 
@@ -78,16 +114,26 @@ const PlayerManager: React.FC<PlayerManagerProps> = ({ players, selectedCourt, o
                     className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#071d40]"
                     required
                 />
-                </div>
-                <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">RUT</label>
-                <input
-                    type="text"
-                    value={currentPlayer.rut}
-                    onChange={(e) => setCurrentPlayer({ ...currentPlayer, rut: e.target.value })}
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#071d40]"
-                    required
-                />
+                </div>                <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">RUT</label>
+                    <input
+                        type="text"
+                        value={currentPlayer.rut}
+                        onChange={(e) => handleRutChange(e.target.value)}
+                        placeholder="12.345.678-9"
+                        className={`w-full px-3 py-2 text-sm sm:text-base border rounded-md focus:outline-none focus:ring-2 ${
+                            rutError 
+                                ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+                                : 'border-gray-300 focus:ring-[#071d40] focus:border-[#071d40]'
+                        }`}
+                        required
+                    />
+                    {rutError && (
+                        <div className="mt-1 flex items-center text-red-600 text-xs sm:text-sm">
+                            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 flex-shrink-0" />
+                            <span>{rutError}</span>
+                        </div>
+                    )}
                 </div>
                 <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Edad</label>

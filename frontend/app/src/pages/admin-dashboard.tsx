@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Users, BarChart3, Package, Plus, ChevronDown, Building2, Loader2, Calendar } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Users, BarChart3, Package, Plus, ChevronDown, Building2, Loader2, Calendar, Home } from "lucide-react"
 import StatCard from "../components/admin/StatCard"
 import ChangePasswordModal from "../components/admin/ChangePasswordModal"
 import UsersTable from "../components/admin/UsersTable"
@@ -29,6 +30,8 @@ interface AdminReservation {
 
 
 function AdminDashboard() {
+  const navigate = useNavigate()
+  
   // State
   const [courts, setCourts] = useState<Court[]>([])
   const [reservationStats, setReservationStats] = useState<ReservationStats[]>([])
@@ -38,17 +41,22 @@ function AdminDashboard() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null)
-
   // UI States
   const [isCreateCourtModalOpen, setIsCreateCourtModalOpen] = useState(false)
   const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false)
-  const [isEditCourtModalOpen, setIsEditCourtModalOpen] = useState(false) // Added edit court modal
-  const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false) // Added edit product modal
-  const [editingCourt, setEditingCourt] = useState<Court | null>(null) // Added editing court state
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null) // Added editing product state
+  const [isEditCourtModalOpen, setIsEditCourtModalOpen] = useState(false)
+  const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false)
+  const [editingCourt, setEditingCourt] = useState<Court | null>(null)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [activeTab, setActiveTab] = useState("dashboard")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Estados para cancelación de reservas por admin
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancellingReservation, setCancellingReservation] = useState<AdminReservation | null>(null)
+  const [cancellationReason, setCancellationReason] = useState("")
+  const [isCancelling, setIsCancelling] = useState(false)
   // Load initial data
   useEffect(() => {
     const loadCurrentUser = () => {
@@ -216,19 +224,74 @@ function AdminDashboard() {
       setIsChangePasswordModalOpen(false)
     } catch (error) {
       alert(error instanceof Error ? error.message : "Error al cambiar la contraseña")
+    }  }
+
+  // Función para abrir el modal de cancelación
+  const handleOpenCancelModal = (reservation: AdminReservation) => {
+    setCancellingReservation(reservation)
+    setCancellationReason("")
+    setShowCancelModal(true)
+  }
+
+  // Función para cancelar reserva con motivo
+  const handleAdminCancelReservation = async () => {
+    if (!cancellingReservation || !cancellationReason.trim()) {
+      alert("Por favor, proporciona un motivo para la cancelación")
+      return
+    }
+
+    try {
+      setIsCancelling(true)
+      
+      // Usar el nuevo servicio de cancelación
+      const result = await ReservationService.cancelReservation(
+        Number(cancellingReservation.id), 
+        cancellationReason,
+        true // isAdminCancellation
+      )
+      
+      if (result.success) {
+        // Actualizar el estado local
+        setReservations(prev => 
+          prev.map(reservation => 
+            reservation.id === cancellingReservation.id 
+              ? { ...reservation, status: 'cancelled' }
+              : reservation
+          )
+        )
+        
+        alert("Reserva cancelada exitosamente. Se ha notificado al cliente por correo.")
+        setShowCancelModal(false)
+        setCancellingReservation(null)
+        setCancellationReason("")
+      } else {
+        alert(result.message || "Error al cancelar la reserva")
+      }
+    } catch (error) {
+      console.error("Error al cancelar reserva:", error)
+      alert("Error al cancelar la reserva. Por favor, intenta nuevamente.")
+    } finally {
+      setIsCancelling(false)
     }
   }
 
-  const handleDeleteUser = async (userId: number) => {
+  const handleDeleteProduct = async (product: Product) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar el producto "${product.name}"?`)) {
+      return
+    }
+
     try {
-      await UserService.deleteUser(userId)
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId))
-      alert("Usuario eliminado exitosamente")
+      await ProductService.deleteProduct(product.id)
+      setProducts((prevProducts) => 
+        prevProducts.filter((p) => p.id !== product.id)
+      )
+      alert("Producto eliminado exitosamente")
     } catch (error) {
-      console.error("Error deleting user:", error)
-      alert(error instanceof Error ? error.message : "Error al eliminar usuario")
+      console.error("Error deleting product:", error)
+      alert(error instanceof Error ? error.message : "Error al eliminar el producto")
     }
   }
+
   const stats = [
     {
       title: "Total Canchas",
@@ -287,9 +350,8 @@ function AdminDashboard() {
       </div>
     )
   }
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <div className="bg-[#0A1838] py-3 px-4 shadow-md text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -305,15 +367,23 @@ function AdminDashboard() {
                   {currentUser?.name?.[0]?.toUpperCase() || "U"}
                 </div>
                 <ChevronDown className="w-4 h-4" />
-              </button>
-
-              {isUserMenuOpen && (
+              </button>              {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                   <div className="py-1">
                     <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-200">
                       <div className="font-medium">{currentUser?.name}</div>
                       <div className="text-gray-500 text-xs truncate">{currentUser?.email}</div>
                     </div>
+                    <button
+                      onClick={() => {
+                        navigate("/")
+                        setIsUserMenuOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <Home className="w-4 h-4" />
+                      <span>Ir al Inicio</span>
+                    </button>
                     <button
                       onClick={() => {
                         setIsChangePasswordModalOpen(true)
@@ -365,10 +435,11 @@ function AdminDashboard() {
               </button>
             ))}
           </nav>
-        </div>
-      </div>
+        </div>      </div>
 
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      {/* Main Content Container */}
+      <div className="flex-1">
+        <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
           {stats.map((stat, index) => (
@@ -460,7 +531,8 @@ function AdminDashboard() {
                   <div className="text-center py-8 text-gray-500">No hay productos disponibles</div>
                 )}
               </div>
-            </div>          </div>
+            </div>
+          </div>
         )}
 
         {/* Reservations Management */}
@@ -501,8 +573,7 @@ function AdminDashboard() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {reservations.length > 0 ? (
-                    reservations.map((reservation) => (
-                      <tr key={reservation.id}>
+                    reservations.map((reservation) => (                      <tr key={reservation.id}>{/* */}
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           #{reservation.id}
                         </td>
@@ -542,36 +613,55 @@ function AdminDashboard() {
                             }`}
                           >
                             {reservation.status === "confirmed" ? "Confirmada" :
-                             reservation.status === "pending" ? "Pendiente" :
-                             reservation.status === "cancelled" ? "Cancelada" :
-                             reservation.status === "completed" ? "Completada" : reservation.status}
-                          </span>
+                            reservation.status === "pending" ? "Pendiente" :
+                            reservation.status === "cancelled" ? "Cancelada" :
+                            reservation.status === "completed" ? "Completada" : reservation.status}                          </span>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {formatChileanCurrency(reservation.totalPrice || reservation.total || 0)}
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">                            <select
-                              value={reservation.status}
-                              onChange={(e) => {
-                                handleReservationStatusChange(
-                                  reservation.id, 
-                                  e.target.value as "pending" | "confirmed" | "completed" | "cancelled"
-                                )
-                              }}
-                              className="text-xs px-2 py-1 border border-gray-300 rounded"
-                            >
-                              <option value="pending">Pendiente</option>
-                              <option value="confirmed">Confirmar</option>
-                              <option value="completed">Completada</option>
-                              <option value="cancelled">Cancelar</option>
-                            </select>
+                          <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
+                            {/* Solo mostrar selector de estado para reservas no canceladas */}
+                            {reservation.status !== 'cancelled' && (
+                              <select
+                                value={reservation.status}
+                                onChange={(e) => {
+                                  const newStatus = e.target.value as "pending" | "confirmed" | "completed" | "cancelled"
+                                  if (newStatus === 'cancelled') {
+                                    handleOpenCancelModal(reservation)
+                                  } else {
+                                    handleReservationStatusChange(reservation.id, newStatus)
+                                  }
+                                }}
+                                className="text-xs px-2 py-1 border border-gray-300 rounded"
+                              >
+                                <option value="pending">Pendiente</option>
+                                <option value="confirmed">Confirmar</option>
+                                <option value="completed">Completada</option>
+                                <option value="cancelled">Cancelar</option>
+                              </select>
+                            )}
+                            
+                            {/* Botón de cancelación directo para admin */}
+                            {reservation.status !== 'cancelled' && reservation.status !== 'completed' && (
+                              <button
+                                onClick={() => handleOpenCancelModal(reservation)}
+                                className="text-xs px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                            
+                            {/* Mostrar estado para reservas canceladas */}
+                            {reservation.status === 'cancelled' && (
+                              <span className="text-xs text-gray-500 italic">Cancelada</span>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
+                    ))                  ) : (
+                    <tr>{/* */}
                       <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                         No hay reservas registradas.
                       </td>
@@ -627,8 +717,7 @@ function AdminDashboard() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {courts.length > 0 ? (
-                    courts.map((court) => (
-                      <tr key={court.id}>
+                    courts.map((court) => (                      <tr key={court.id}>{/* */}
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           {court.image ? (
                             <img
@@ -670,7 +759,8 @@ function AdminDashboard() {
                           >
                             <option value="available">Disponible</option>
                             <option value="occupied">Ocupada</option>
-                            <option value="maintenance">Mantenimiento</option>                          </select>
+                            <option value="maintenance">Mantenimiento</option>
+                          </select>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
@@ -684,9 +774,8 @@ function AdminDashboard() {
                           </div>
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
+                    ))                  ) : (
+                    <tr>{/* */}
                       <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                         No hay canchas registradas. Crea la primera cancha.
                       </td>
@@ -736,8 +825,7 @@ function AdminDashboard() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {products.length > 0 ? (
-                    products.map((product) => (
-                      <tr key={product.id}>
+                    products.map((product) => (                      <tr key={product.id}>{/* */}
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
@@ -766,7 +854,8 @@ function AdminDashboard() {
                           >
                             {product.stock} unidades
                           </span>
-                        </td>                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {product.sold} vendidos
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -777,13 +866,17 @@ function AdminDashboard() {
                             >
                               Editar
                             </button>
-                            <button className="text-red-600 hover:text-red-900">Eliminar</button>
+                            <button 
+                              onClick={() => handleDeleteProduct(product)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Eliminar
+                            </button>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
+                    ))                  ) : (
+                    <tr>{/* */}
                       <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                         No hay productos registrados.
                       </td>
@@ -805,7 +898,7 @@ function AdminDashboard() {
             </div>
             <div className="p-4 sm:p-6">
               {users.length > 0 ? (
-                <UsersTable users={users} onDeleteUser={handleDeleteUser} />
+                <UsersTable users={users} />
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Users className="w-12 h-12 mx-auto text-gray-400 mb-4" />
@@ -815,7 +908,10 @@ function AdminDashboard() {
             </div>
           </div>
         )}
-      </main>      {/* Modals */}
+      </main>
+      </div>
+
+      {/* Modals */}
       <CreateCourtModal
         isOpen={isCreateCourtModalOpen}
         onClose={() => setIsCreateCourtModalOpen(false)}
@@ -828,7 +924,8 @@ function AdminDashboard() {
           setIsEditCourtModalOpen(false)
           setEditingCourt(null)
         }}
-        onSubmit={handleUpdateCourt}        editData={editingCourt ? {
+        onSubmit={handleUpdateCourt}        
+        editData={editingCourt ? {
           name: editingCourt.name,
           type: editingCourt.type,
           status: editingCourt.status,
@@ -862,12 +959,94 @@ function AdminDashboard() {
         } : undefined}
         isEditing={true}
       />
-
       <ChangePasswordModal
         isOpen={isChangePasswordModalOpen}
         onClose={() => setIsChangePasswordModalOpen(false)}
         onSubmit={handleChangePassword}
       />
+
+      {/* Modal de Cancelación de Reserva */}
+      {showCancelModal && cancellingReservation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4 text-red-600">Cancelar Reserva</h3>
+            
+            <div className="mb-4 p-3 bg-gray-50 rounded-md">
+              <p className="text-sm text-gray-600">
+                <strong>Reserva:</strong> #{cancellingReservation.id}
+              </p>
+              <p className="text-sm text-gray-600">
+                <strong>Usuario:</strong> {cancellingReservation.user?.name || cancellingReservation.userName || 'Usuario desconocido'}
+              </p>
+              <p className="text-sm text-gray-600">
+                <strong>Cancha:</strong> {cancellingReservation.court?.name || cancellingReservation.courtName || 'Cancha no especificada'}
+              </p>
+              <p className="text-sm text-gray-600">
+                <strong>Fecha:</strong> {new Date(cancellingReservation.date || cancellingReservation.startTime).toLocaleDateString('es-ES')}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Motivo de la cancelación *
+              </label>
+              <textarea
+                value={cancellationReason}
+                onChange={(e) => setCancellationReason(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                rows={4}
+                placeholder="Proporciona un motivo detallado para la cancelación. Este mensaje será enviado al cliente."
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Este mensaje será incluido en el correo de notificación al cliente.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCancelModal(false)
+                  setCancellingReservation(null)
+                  setCancellationReason("")
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition"
+                disabled={isCancelling}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAdminCancelReservation}
+                disabled={isCancelling || !cancellationReason.trim()}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                {isCancelling ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Cancelando...
+                  </>
+                ) : (
+                  'Confirmar Cancelación'
+                )}
+              </button>
+            </div>
+          </div>        </div>      )}
+      
+      {/* Footer */}
+      <footer className="bg-[#0A1838] text-white py-8 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold mb-2">Gestión de Canchas UCN</h3>
+            <p className="text-gray-300 text-sm">
+              Panel Administrativo - Universidad Católica del Norte
+            </p>
+            <p className="text-gray-400 text-xs mt-2">
+              © 2025 Gestión de Canchas UCN. Todos los derechos reservados.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext.tsx';
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
 import AdminGuard from './guards/AdminGuard';
-import ReservationPage from './pages/ReservationPage';
+import ReservationPage from './pages/ReservationPageNew';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from "./pages/admin-dashboard";
 import { Toaster } from 'react-hot-toast';

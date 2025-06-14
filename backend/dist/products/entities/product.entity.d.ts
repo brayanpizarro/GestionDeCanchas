@@ -10,4 +10,5 @@ export declare class Product {
     previousStock: number;
     createdAt: Date;
     updatedAt: Date;
+    imageUrl?: string;
 }

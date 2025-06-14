@@ -16,7 +16,12 @@ export class ProductsService {
 
   async findAll(): Promise<Product[]> {
     try {
-      return await this.productsRepository.find();
+      const products = await this.productsRepository.find();
+      // Add imageUrl property for frontend compatibility
+      return products.map(product => ({
+        ...product,
+        imageUrl: product.imagePath ? this.normalizeImagePath(product.imagePath) : undefined
+      }));
     } catch (error) {
       this.logger.error('Error finding all products:', error);
       throw new InternalServerErrorException('Failed to retrieve products');
@@ -29,7 +34,11 @@ export class ProductsService {
       if (!product) {
         throw new NotFoundException(`Product with ID ${id} not found`);
       }
-      return product;
+      // Add imageUrl property for frontend compatibility
+      return {
+        ...product,
+        imageUrl: product.imagePath ? this.normalizeImagePath(product.imagePath) : undefined
+      };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -37,6 +46,25 @@ export class ProductsService {
       this.logger.error(`Error finding product with ID ${id}:`, error);
       throw new InternalServerErrorException('Failed to retrieve product');
     }
+  }
+
+  /**
+   * Normaliza la ruta de imagen para evitar duplicaciones y caracteres problemáticos
+   */
+  private normalizeImagePath(imagePath: string): string {
+    if (!imagePath) return '';
+    
+    // Remover cualquier prefijo /uploads/ al inicio
+    let cleanPath = imagePath.replace(/^\/+uploads\/+/g, '');
+    
+    // Si la ruta comienza con uploads/ (sin barra inicial), también removerlo
+    cleanPath = cleanPath.replace(/^uploads\/+/g, '');
+    
+    // Construir la ruta final
+    const finalPath = `/uploads/${cleanPath}`;
+    
+    this.logger.debug(`Normalized image path: ${imagePath} -> ${finalPath}`);
+    return finalPath;
   }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -122,7 +150,7 @@ export class ProductsService {
         this.productsRepository
           .createQueryBuilder('product')
           .select('SUM(product.stock)', 'totalStock')
-          .getRawOne(),
+          .getRawOne<{ totalStock: string | null }>(),
         this.productsRepository
           .createQueryBuilder('product')
           .select('DISTINCT product.category', 'category')
@@ -132,8 +160,8 @@ export class ProductsService {
 
       return {
         total: totalCount,
-        totalStock: parseInt(totalStockResult?.totalStock) || 0,
-        categories: categoriesResult.map(c => c.category).filter(Boolean),
+        totalStock: parseInt(totalStockResult && totalStockResult.totalStock ? totalStockResult.totalStock : '0') || 0,
+        categories: (categoriesResult as { category: string | null }[]).map(c => c.category).filter((cat): cat is string => Boolean(cat)),
         lowStock: lowStockCount
       };
     } catch (error) {
@@ -147,9 +175,16 @@ export class ProductsService {
       const result = await this.productsRepository
         .createQueryBuilder('product')
         .select('SUM(product.stock)', 'totalStock')
-        .getRawOne();
+        .getRawOne<{ totalStock: string | null }>();
       
-      return parseInt(result?.totalStock) || 0;
+      // Handle null/undefined cases more explicitly
+      const totalStock = result?.totalStock;
+      if (!totalStock || totalStock === null) {
+        return 0;
+      }
+      
+      const parsed = parseInt(totalStock, 10);
+      return isNaN(parsed) ? 0 : parsed;
     } catch (error) {
       this.logger.error('Error getting total stock:', error);
       throw new InternalServerErrorException('Failed to retrieve total stock');
