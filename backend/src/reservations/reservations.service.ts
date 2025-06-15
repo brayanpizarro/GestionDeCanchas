@@ -329,248 +329,60 @@ export class ReservationsService {
         return updatedReservation;
     }
 
-    async getAvailableTimeSlots(
-        courtId: number,
-        date: string,
-        duration: number = 90
-    ): Promise<Array<{ startTime: Date; endTime: Date }>> {
-        if (!Number.isInteger(courtId) || courtId <= 0) {
-            throw new BadRequestException('Invalid court ID');
-        }
-
-        if (typeof date !== 'string' || !date) {
-            throw new BadRequestException('Invalid date');
-        }
-
-        const court = await this.courtsRepository.findOneBy({ id: courtId });
-        if (!court) {
-            throw new NotFoundException(`Court with ID ${courtId} not found`);
-        }
-
-        const startOfDay = new Date(date);
-        if (isNaN(startOfDay.getTime())) {
-            throw new BadRequestException('Invalid date format');
-        }
-
+    /**
+     * Obtiene los horarios disponibles para una cancha específica en una fecha dada
+     */
+    async getAvailableTimeSlots(courtId: number, date: string): Promise<{ available: string[], reserved: string[] }> {
+        const targetDate = new Date(date);
+        const startOfDay = new Date(targetDate);
         startOfDay.setHours(0, 0, 0, 0);
-
-        const endOfDay = new Date(date);
+        
+        const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
 
-        const reservations = await this.reservationsRepository.find({
+        // Buscar todas las reservas confirmadas y pendientes para esta cancha en la fecha
+        const existingReservations = await this.reservationsRepository.find({
             where: {
-                court: { id: courtId },
-                startTime: Between(startOfDay, endOfDay),
-                status: In(['confirmed', 'pending']), // Incluir tanto confirmadas como pendientes
-            },
-            order: { startTime: 'ASC' },
-        });
-
-        const availableTimeSlots: Array<{ startTime: Date; endTime: Date }> = [];
-        const requestedDuration = duration; // duración solicitada por el usuario en minutos
-        const slotInterval = 30; // intervalo entre slots posibles (30 minutos)
-
-        const openingTime = new Date(date);
-        openingTime.setHours(8, 0, 0, 0);
-
-        const closingTime = new Date(date);
-        closingTime.setHours(18, 0, 0, 0);
-
-        let currentSlot = new Date(openingTime);
-
-        while (currentSlot < closingTime) {
-            const slotEnd = new Date(currentSlot);
-            slotEnd.setMinutes(slotEnd.getMinutes() + requestedDuration);
-
-            // Verificar que no exceda el horario de cierre
-            if (slotEnd > closingTime) {
-                break;
-            }
-
-            // Verificar que todo el período de la duración solicitada esté disponible
-            const isAvailable = !reservations.some(reservation => {
-                // Verificar si hay algún conflicto en todo el período solicitado
-                return (currentSlot < reservation.endTime && slotEnd > reservation.startTime);
-            });
-
-            if (isAvailable) {
-                availableTimeSlots.push({
-                    startTime: new Date(currentSlot),
-                    endTime: new Date(slotEnd),
-                });
-            }
-
-            // Avanzar en intervalos de 30 minutos para permitir más opciones
-            currentSlot = new Date(currentSlot);
-            currentSlot.setMinutes(currentSlot.getMinutes() + slotInterval);
-        }
-
-        return availableTimeSlots;
-    }
-
-    async getTimeSlotsWithAvailability(
-        courtId: number,
-        date: string
-    ): Promise<Array<{ 
-        startTime: Date; 
-        endTime: Date; 
-        isAvailable: boolean; 
-        status?: 'confirmed' | 'pending';
-        reservationId?: number;
-    }>> {
-        if (!Number.isInteger(courtId) || courtId <= 0) {
-            throw new BadRequestException('Invalid court ID');
-        }
-
-        const court = await this.courtsRepository.findOneBy({ id: courtId });
-        if (!court) {
-            throw new NotFoundException(`Court with ID ${courtId} not found`);
-        }
-
-        const startOfDay = new Date(date);
-        if (isNaN(startOfDay.getTime())) {
-            throw new BadRequestException('Invalid date format');
-        }
-
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-
-        // Obtener todas las reservas del día (confirmadas y pendientes)
-        const reservations = await this.reservationsRepository.find({
-            where: {
-                court: { id: courtId },
-                startTime: Between(startOfDay, endOfDay),
+                courtId,
                 status: In(['confirmed', 'pending']),
+                startTime: Between(startOfDay, endOfDay)
             },
-            order: { startTime: 'ASC' },
+            order: { startTime: 'ASC' }
         });
 
-        const timeSlots: Array<{ 
-            startTime: Date; 
-            endTime: Date; 
-            isAvailable: boolean; 
-            status?: 'confirmed' | 'pending';
-            reservationId?: number;
-        }> = [];
-
-        const slotDuration = 60; // duración en minutos
-        const openingTime = new Date(date);
-        openingTime.setHours(8, 0, 0, 0);
-        const closingTime = new Date(date);
-        closingTime.setHours(18, 0, 0, 0);
-
-        let currentSlot = new Date(openingTime);
-
-        while (currentSlot < closingTime) {
-            const slotEnd = new Date(currentSlot);
-            slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);
-
-            // Buscar si hay una reserva que ocupe este horario
-            const conflictingReservation = reservations.find(reservation => {
-                return (currentSlot >= reservation.startTime && currentSlot < reservation.endTime) ||
-                    (slotEnd > reservation.startTime && slotEnd <= reservation.endTime) ||
-                    (currentSlot <= reservation.startTime && slotEnd >= reservation.endTime);
-            });
-
-            if (conflictingReservation) {
-                timeSlots.push({
-                    startTime: new Date(currentSlot),
-                    endTime: new Date(slotEnd),
-                    isAvailable: false,
-                    status: conflictingReservation.status as 'confirmed' | 'pending',
-                    reservationId: conflictingReservation.id,
-                });
-            } else {
-                timeSlots.push({
-                    startTime: new Date(currentSlot),
-                    endTime: new Date(slotEnd),
-                    isAvailable: true,
-                });
-            }
-
-            currentSlot = new Date(slotEnd);
+        // Generar horarios disponibles (ejemplo: de 8:00 a 22:00 cada hora)
+        const allTimeSlots: string[] = [];
+        for (let hour = 8; hour <= 21; hour++) {
+            allTimeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
         }
 
-        return timeSlots;
+        // Marcar horarios reservados
+        const reservedSlots = existingReservations.map(reservation => {
+            const startHour = reservation.startTime.getHours();
+            return `${startHour.toString().padStart(2, '0')}:00`;
+        });
+
+        const availableSlots = allTimeSlots.filter(slot => !reservedSlots.includes(slot));
+
+        return {
+            available: availableSlots,
+            reserved: reservedSlots
+        };
     }
 
-    async cancelReservation(reservationId: number, reason?: string, isAdminCancellation: boolean = false): Promise<{ success: boolean; message: string }> {
-        // Buscar la reserva con todas las relaciones necesarias
-        const reservation = await this.reservationsRepository.findOne({
-            where: { id: reservationId },
-            relations: ['user', 'court', 'players']
-        });
+    /**
+     * Verifica si una cancha está disponible en un horario específico
+     */
+    async isCourtAvailable(courtId: number, startTime: Date, endTime: Date): Promise<boolean> {
+        const conflictingReservations = await this.reservationsRepository.createQueryBuilder('reservation')
+            .where('reservation.courtId = :courtId', { courtId })
+            .andWhere('reservation.status IN (:...statuses)', { statuses: ['confirmed', 'pending'] })
+            .andWhere(
+                '(reservation.startTime < :endTime AND reservation.endTime > :startTime)',
+                { startTime, endTime }
+            )
+            .getCount();
 
-        if (!reservation) {
-            throw new NotFoundException('Reserva no encontrada');
-        }
-
-        // Verificar que la reserva se puede cancelar
-        if (reservation.status === 'cancelled') {
-            throw new BadRequestException('Esta reserva ya está cancelada');
-        }
-
-        if (reservation.status === 'completed') {
-            throw new BadRequestException('No se puede cancelar una reserva completada');
-        }
-
-        // Verificar tiempo de cancelación (solo para usuarios, admin puede cancelar siempre)
-        if (!isAdminCancellation) {
-            const now = new Date();
-            const reservationTime = new Date(reservation.startTime);
-            const timeDiff = reservationTime.getTime() - now.getTime();
-            const hoursDiff = timeDiff / (1000 * 3600);
-
-            if (hoursDiff < 2) {
-                throw new BadRequestException('No se puede cancelar la reserva con menos de 2 horas de anticipación');
-            }
-        }
-
-        try {
-            // Actualizar estado de la reserva
-            reservation.status = 'cancelled';
-            const cancelledReservation = await this.reservationsRepository.save(reservation);
-
-            // Si la reserva estaba confirmada, devolver el dinero al usuario
-            if (reservation.status === 'confirmed') {
-                const amount = parseFloat(reservation.amount.toString());
-                await this.usersService.addBalance(reservation.userId, amount);
-                console.log(`💰 Saldo de ${amount} devuelto al usuario ${reservation.userId}`);
-            }
-
-            // Enviar email de cancelación
-            try {
-                const { EmailService } = await import('../email/email.service');
-                const emailService = new EmailService();
-                
-                await emailService.sendReservationCancellation(
-                    reservation.user.email,
-                    reservation.user.name,
-                    {
-                        id: cancelledReservation.id,
-                        courtName: reservation.court.name,
-                        date: reservation.startTime.toISOString(),
-                        startTime: reservation.startTime.toISOString(),
-                        endTime: reservation.endTime.toISOString(),
-                        cancellationReason: reason
-                    }
-                );
-                console.log('✅ Email de cancelación enviado');
-            } catch (emailError) {
-                console.error('❌ Error enviando email de cancelación:', emailError);
-                // No lanzamos el error para no afectar el flujo de cancelación
-            }
-
-            return {
-                success: true,
-                message: isAdminCancellation 
-                    ? 'Reserva cancelada por administrador y usuario notificado'
-                    : 'Reserva cancelada exitosamente y saldo reembolsado'
-            };
-        } catch (error) {
-            console.error('Error en cancelación de reserva:', error);
-            throw new BadRequestException('Error al cancelar la reserva');
-        }
+        return conflictingReservations === 0;
     }
 }

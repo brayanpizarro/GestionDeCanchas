@@ -1,43 +1,10 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
@@ -286,176 +253,41 @@ let ReservationsService = class ReservationsService {
         }
         return updatedReservation;
     }
-    async getAvailableTimeSlots(courtId, date, duration = 90) {
-        if (!Number.isInteger(courtId) || courtId <= 0) {
-            throw new common_1.BadRequestException('Invalid court ID');
-        }
-        if (typeof date !== 'string' || !date) {
-            throw new common_1.BadRequestException('Invalid date');
-        }
-        const court = await this.courtsRepository.findOneBy({ id: courtId });
-        if (!court) {
-            throw new common_1.NotFoundException(`Court with ID ${courtId} not found`);
-        }
-        const startOfDay = new Date(date);
-        if (isNaN(startOfDay.getTime())) {
-            throw new common_1.BadRequestException('Invalid date format');
-        }
+    async getAvailableTimeSlots(courtId, date) {
+        const targetDate = new Date(date);
+        const startOfDay = new Date(targetDate);
         startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
+        const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
-        const reservations = await this.reservationsRepository.find({
+        const existingReservations = await this.reservationsRepository.find({
             where: {
-                court: { id: courtId },
-                startTime: (0, typeorm_2.Between)(startOfDay, endOfDay),
+                courtId,
                 status: (0, typeorm_2.In)(['confirmed', 'pending']),
+                startTime: (0, typeorm_2.Between)(startOfDay, endOfDay)
             },
-            order: { startTime: 'ASC' },
+            order: { startTime: 'ASC' }
         });
-        const availableTimeSlots = [];
-        const requestedDuration = duration;
-        const slotInterval = 30;
-        const openingTime = new Date(date);
-        openingTime.setHours(8, 0, 0, 0);
-        const closingTime = new Date(date);
-        closingTime.setHours(18, 0, 0, 0);
-        let currentSlot = new Date(openingTime);
-        while (currentSlot < closingTime) {
-            const slotEnd = new Date(currentSlot);
-            slotEnd.setMinutes(slotEnd.getMinutes() + requestedDuration);
-            if (slotEnd > closingTime) {
-                break;
-            }
-            const isAvailable = !reservations.some(reservation => {
-                return (currentSlot < reservation.endTime && slotEnd > reservation.startTime);
-            });
-            if (isAvailable) {
-                availableTimeSlots.push({
-                    startTime: new Date(currentSlot),
-                    endTime: new Date(slotEnd),
-                });
-            }
-            currentSlot = new Date(currentSlot);
-            currentSlot.setMinutes(currentSlot.getMinutes() + slotInterval);
+        const allTimeSlots = [];
+        for (let hour = 8; hour <= 21; hour++) {
+            allTimeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
         }
-        return availableTimeSlots;
+        const reservedSlots = existingReservations.map(reservation => {
+            const startHour = reservation.startTime.getHours();
+            return `${startHour.toString().padStart(2, '0')}:00`;
+        });
+        const availableSlots = allTimeSlots.filter(slot => !reservedSlots.includes(slot));
+        return {
+            available: availableSlots,
+            reserved: reservedSlots
+        };
     }
-    async getTimeSlotsWithAvailability(courtId, date) {
-        if (!Number.isInteger(courtId) || courtId <= 0) {
-            throw new common_1.BadRequestException('Invalid court ID');
-        }
-        const court = await this.courtsRepository.findOneBy({ id: courtId });
-        if (!court) {
-            throw new common_1.NotFoundException(`Court with ID ${courtId} not found`);
-        }
-        const startOfDay = new Date(date);
-        if (isNaN(startOfDay.getTime())) {
-            throw new common_1.BadRequestException('Invalid date format');
-        }
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(date);
-        endOfDay.setHours(23, 59, 59, 999);
-        const reservations = await this.reservationsRepository.find({
-            where: {
-                court: { id: courtId },
-                startTime: (0, typeorm_2.Between)(startOfDay, endOfDay),
-                status: (0, typeorm_2.In)(['confirmed', 'pending']),
-            },
-            order: { startTime: 'ASC' },
-        });
-        const timeSlots = [];
-        const slotDuration = 60;
-        const openingTime = new Date(date);
-        openingTime.setHours(8, 0, 0, 0);
-        const closingTime = new Date(date);
-        closingTime.setHours(18, 0, 0, 0);
-        let currentSlot = new Date(openingTime);
-        while (currentSlot < closingTime) {
-            const slotEnd = new Date(currentSlot);
-            slotEnd.setMinutes(slotEnd.getMinutes() + slotDuration);
-            const conflictingReservation = reservations.find(reservation => {
-                return (currentSlot >= reservation.startTime && currentSlot < reservation.endTime) ||
-                    (slotEnd > reservation.startTime && slotEnd <= reservation.endTime) ||
-                    (currentSlot <= reservation.startTime && slotEnd >= reservation.endTime);
-            });
-            if (conflictingReservation) {
-                timeSlots.push({
-                    startTime: new Date(currentSlot),
-                    endTime: new Date(slotEnd),
-                    isAvailable: false,
-                    status: conflictingReservation.status,
-                    reservationId: conflictingReservation.id,
-                });
-            }
-            else {
-                timeSlots.push({
-                    startTime: new Date(currentSlot),
-                    endTime: new Date(slotEnd),
-                    isAvailable: true,
-                });
-            }
-            currentSlot = new Date(slotEnd);
-        }
-        return timeSlots;
-    }
-    async cancelReservation(reservationId, reason, isAdminCancellation = false) {
-        const reservation = await this.reservationsRepository.findOne({
-            where: { id: reservationId },
-            relations: ['user', 'court', 'players']
-        });
-        if (!reservation) {
-            throw new common_1.NotFoundException('Reserva no encontrada');
-        }
-        if (reservation.status === 'cancelled') {
-            throw new common_1.BadRequestException('Esta reserva ya está cancelada');
-        }
-        if (reservation.status === 'completed') {
-            throw new common_1.BadRequestException('No se puede cancelar una reserva completada');
-        }
-        if (!isAdminCancellation) {
-            const now = new Date();
-            const reservationTime = new Date(reservation.startTime);
-            const timeDiff = reservationTime.getTime() - now.getTime();
-            const hoursDiff = timeDiff / (1000 * 3600);
-            if (hoursDiff < 2) {
-                throw new common_1.BadRequestException('No se puede cancelar la reserva con menos de 2 horas de anticipación');
-            }
-        }
-        try {
-            reservation.status = 'cancelled';
-            const cancelledReservation = await this.reservationsRepository.save(reservation);
-            if (reservation.status === 'confirmed') {
-                const amount = parseFloat(reservation.amount.toString());
-                await this.usersService.addBalance(reservation.userId, amount);
-                console.log(`💰 Saldo de ${amount} devuelto al usuario ${reservation.userId}`);
-            }
-            try {
-                const { EmailService } = await Promise.resolve().then(() => __importStar(require('../email/email.service')));
-                const emailService = new EmailService();
-                await emailService.sendReservationCancellation(reservation.user.email, reservation.user.name, {
-                    id: cancelledReservation.id,
-                    courtName: reservation.court.name,
-                    date: reservation.startTime.toISOString(),
-                    startTime: reservation.startTime.toISOString(),
-                    endTime: reservation.endTime.toISOString(),
-                    cancellationReason: reason
-                });
-                console.log('✅ Email de cancelación enviado');
-            }
-            catch (emailError) {
-                console.error('❌ Error enviando email de cancelación:', emailError);
-            }
-            return {
-                success: true,
-                message: isAdminCancellation
-                    ? 'Reserva cancelada por administrador y usuario notificado'
-                    : 'Reserva cancelada exitosamente y saldo reembolsado'
-            };
-        }
-        catch (error) {
-            console.error('Error en cancelación de reserva:', error);
-            throw new common_1.BadRequestException('Error al cancelar la reserva');
-        }
+    async isCourtAvailable(courtId, startTime, endTime) {
+        const conflictingReservations = await this.reservationsRepository.createQueryBuilder('reservation')
+            .where('reservation.courtId = :courtId', { courtId })
+            .andWhere('reservation.status IN (:...statuses)', { statuses: ['confirmed', 'pending'] })
+            .andWhere('(reservation.startTime < :endTime AND reservation.endTime > :startTime)', { startTime, endTime })
+            .getCount();
+        return conflictingReservations === 0;
     }
 };
 exports.ReservationsService = ReservationsService;

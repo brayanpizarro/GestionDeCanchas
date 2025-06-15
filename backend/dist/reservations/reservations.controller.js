@@ -16,13 +16,10 @@ exports.ReservationsController = void 0;
 const common_1 = require("@nestjs/common");
 const reservations_service_1 = require("./reservations.service");
 const create_reservation_dto_1 = require("./dto/create-reservation.dto");
-const email_service_1 = require("../email/email.service");
 let ReservationsController = class ReservationsController {
     reservationsService;
-    emailService;
-    constructor(reservationsService, emailService) {
+    constructor(reservationsService) {
         this.reservationsService = reservationsService;
-        this.emailService = emailService;
     }
     async create(createReservationDto) {
         try {
@@ -67,37 +64,31 @@ let ReservationsController = class ReservationsController {
             courtStats: Object.values(courtStats)
         };
     }
-    async getDebugReservations() {
-        const allReservations = await this.reservationsService.findAllWithDeleted();
-        console.log('🔍 DEBUG - Total reservas (incluyendo eliminadas):', allReservations.length);
-        return {
-            total: allReservations.length,
-            reservations: allReservations
-        };
-    }
-    async findAllReservations() {
-        console.log('🔍 Admin solicitando TODAS las reservas...');
-        const allReservations = await this.reservationsService.findAll();
-        console.log(`📊 Total de reservas encontradas: ${allReservations.length}`);
-        allReservations.forEach((reservation, index) => {
-            console.log(`📋 Reserva ${index + 1}:`, {
-                id: reservation.id,
-                user: reservation.user?.name || 'Sin usuario',
-                court: reservation.court?.name || 'Sin cancha',
-                status: reservation.status,
-                date: new Date(reservation.startTime).toLocaleDateString()
-            });
-        });
-        return allReservations;
-    }
     findByUser(userId) {
         return this.reservationsService.findByUser(userId);
     }
-    getAvailableTimeSlots(courtId, date, duration) {
-        return this.reservationsService.getAvailableTimeSlots(courtId, date, duration);
+    async getAvailableTimeSlots(courtId, date) {
+        if (!date) {
+            throw new common_1.BadRequestException('Date parameter is required');
+        }
+        return await this.reservationsService.getAvailableTimeSlots(courtId, date);
     }
-    getTimeSlotsWithAvailability(courtId, date) {
-        return this.reservationsService.getTimeSlotsWithAvailability(courtId, date);
+    async checkCourtAvailability(courtId, startTime, endTime) {
+        if (!startTime || !endTime) {
+            throw new common_1.BadRequestException('startTime and endTime parameters are required');
+        }
+        const startDate = new Date(startTime);
+        const endDate = new Date(endTime);
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            throw new common_1.BadRequestException('Invalid date format');
+        }
+        const isAvailable = await this.reservationsService.isCourtAvailable(courtId, startDate, endDate);
+        return {
+            courtId,
+            startTime,
+            endTime,
+            available: isAvailable
+        };
     }
     async processPayment(reservationId, userId) {
         const finalUserId = userId || 1;
@@ -109,72 +100,9 @@ let ReservationsController = class ReservationsController {
     updateStatus(id, status) {
         return this.reservationsService.updateStatus(id, status);
     }
-    async cancelReservation(id, cancelData) {
-        return await this.reservationsService.cancelReservation(id, cancelData.reason, cancelData.isAdminCancellation);
-    }
-    async testEmail() {
-        console.log('🧪 Endpoint de prueba de email llamado');
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-            return {
-                success: false,
-                message: 'Variables de entorno de email no configuradas',
-                config: {
-                    EMAIL_USER: process.env.EMAIL_USER ? 'Configurado' : 'NO CONFIGURADO',
-                    EMAIL_PASSWORD: process.env.EMAIL_PASSWORD ? 'Configurado' : 'NO CONFIGURADO'
-                }
-            };
-        }
-        try {
-            const testReservationData = {
-                id: 999,
-                courtName: 'Cancha de Prueba',
-                date: new Date().toISOString(),
-                startTime: new Date().toISOString(),
-                endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-                duration: 60,
-                players: ['Juan Pérez', 'María González']
-            };
-            await this.emailService.sendReservationConfirmation(process.env.EMAIL_USER, 'Usuario de Prueba', testReservationData);
-            return {
-                success: true,
-                message: 'Email de prueba enviado exitosamente',
-                sentTo: process.env.EMAIL_USER
-            };
-        }
-        catch (error) {
-            console.error('❌ Error en prueba de email:', error);
-            return {
-                success: false,
-                message: 'Error enviando email de prueba',
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            };
-        }
-    }
-    async getAvailability(courtId, date) {
-        return this.reservationsService.getTimeSlotsWithAvailability(courtId, date);
-    }
-    async sendReminderEmails() {
-        try {
-            console.log('Función de recordatorios por email no implementada aún');
-            await Promise.resolve();
-            return {
-                success: true,
-                message: 'Función de recordatorios pendiente de implementación'
-            };
-        }
-        catch (error) {
-            console.error('Error enviando recordatorios:', error);
-            return {
-                success: false,
-                message: 'Error enviando correos de recordatorio',
-                error: error instanceof Error ? error.message : 'Error desconocido'
-            };
-        }
-    }
 };
 exports.ReservationsController = ReservationsController;
 __decorate([
-    (0, common_1.Post)(),
     (0, common_1.Post)(),
     (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true, whitelist: true })),
     __param(0, (0, common_1.Body)()),
@@ -195,18 +123,6 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ReservationsController.prototype, "getStats", null);
 __decorate([
-    (0, common_1.Get)('debug'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ReservationsController.prototype, "getDebugReservations", null);
-__decorate([
-    (0, common_1.Get)('all'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ReservationsController.prototype, "findAllReservations", null);
-__decorate([
     (0, common_1.Get)('user/:userId'),
     __param(0, (0, common_1.Param)('userId')),
     __metadata("design:type", Function),
@@ -214,22 +130,22 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "findByUser", null);
 __decorate([
-    (0, common_1.Get)('available/:courtId'),
-    __param(0, (0, common_1.Param)('courtId')),
-    __param(1, (0, common_1.Query)('date')),
-    __param(2, (0, common_1.Query)('duration')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String, Number]),
-    __metadata("design:returntype", void 0)
-], ReservationsController.prototype, "getAvailableTimeSlots", null);
-__decorate([
-    (0, common_1.Get)('slots/:courtId'),
+    (0, common_1.Get)('courts/:courtId/available-slots'),
     __param(0, (0, common_1.Param)('courtId')),
     __param(1, (0, common_1.Query)('date')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", void 0)
-], ReservationsController.prototype, "getTimeSlotsWithAvailability", null);
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "getAvailableTimeSlots", null);
+__decorate([
+    (0, common_1.Get)('courts/:courtId/check-availability'),
+    __param(0, (0, common_1.Param)('courtId')),
+    __param(1, (0, common_1.Query)('startTime')),
+    __param(2, (0, common_1.Query)('endTime')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, String, String]),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "checkCourtAvailability", null);
 __decorate([
     (0, common_1.Post)(':id/pay'),
     __param(0, (0, common_1.Param)('id')),
@@ -253,37 +169,8 @@ __decorate([
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "updateStatus", null);
-__decorate([
-    (0, common_1.Put)(':id/cancel'),
-    __param(0, (0, common_1.Param)('id')),
-    __param(1, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, Object]),
-    __metadata("design:returntype", Promise)
-], ReservationsController.prototype, "cancelReservation", null);
-__decorate([
-    (0, common_1.Get)('test-email'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ReservationsController.prototype, "testEmail", null);
-__decorate([
-    (0, common_1.Get)('availability/:courtId'),
-    __param(0, (0, common_1.Param)('courtId')),
-    __param(1, (0, common_1.Query)('date')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, String]),
-    __metadata("design:returntype", Promise)
-], ReservationsController.prototype, "getAvailability", null);
-__decorate([
-    (0, common_1.Get)('send-reminders'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ReservationsController.prototype, "sendReminderEmails", null);
 exports.ReservationsController = ReservationsController = __decorate([
     (0, common_1.Controller)('reservations'),
-    __metadata("design:paramtypes", [reservations_service_1.ReservationsService,
-        email_service_1.EmailService])
+    __metadata("design:paramtypes", [reservations_service_1.ReservationsService])
 ], ReservationsController);
 //# sourceMappingURL=reservations.controller.js.map

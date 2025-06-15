@@ -25,19 +25,9 @@ export declare class ReservationsService {
     findByUser(userId: number): Promise<Reservation[]>;
     findOne(id: number): Promise<Reservation>;
     updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<Reservation>;
-    getAvailableTimeSlots(courtId: number, date: string, duration?: number): Promise<Array<{
-        startTime: Date;
-        endTime: Date;
-    }>>;
-    getTimeSlotsWithAvailability(courtId: number, date: string): Promise<Array<{
-        startTime: Date;
-        endTime: Date;
-        isAvailable: boolean;
-        status?: 'confirmed' | 'pending';
-        reservationId?: number;
-    }>>;
-    cancelReservation(reservationId: number, reason?: string, isAdminCancellation?: boolean): Promise<{
-        success: boolean;
-        message: string;
+    getAvailableTimeSlots(courtId: number, date: string): Promise<{
+        available: string[];
+        reserved: string[];
     }>;
+    isCourtAvailable(courtId: number, startTime: Date, endTime: Date): Promise<boolean>;
 }
