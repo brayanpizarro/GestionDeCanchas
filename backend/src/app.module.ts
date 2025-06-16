@@ -8,7 +8,7 @@ import { ReservationsModule } from './reservations/reservations.module';
 import { ProductsModule } from './products/products.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { CardModule } from './card/card.module';
-import { ForgotPasswordModule } from 'auth/forgot-password.module';
+import { ForgotPasswordModule } from './auth/forgot-password.module';
 
 @Module({
   imports: [

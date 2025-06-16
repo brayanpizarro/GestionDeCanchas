@@ -36,4 +36,6 @@ export declare class ProductsService {
         type: string;
         date: Date;
     }[]>;
+    reduceStock(productId: number, quantity: number): Promise<Product>;
+    restoreStock(productId: number, quantity: number): Promise<Product>;
 }

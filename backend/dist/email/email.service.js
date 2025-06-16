@@ -46,6 +46,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmailService = void 0;
 const common_1 = require("@nestjs/common");
 const nodemailer = __importStar(require("nodemailer"));
+const date_utils_1 = require("../utils/date.utils");
 let EmailService = EmailService_1 = class EmailService {
     transporter;
     logger = new common_1.Logger(EmailService_1.name);
@@ -223,20 +224,9 @@ let EmailService = EmailService_1 = class EmailService {
             this.logger.log('Enviando confirmación de reserva...');
             this.logger.log(`Destinatario: ${email}`);
             this.logger.log(`Cancha: ${reservationData.courtName}`);
-            const formattedDate = new Date(reservationData.date).toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            const formattedStartTime = new Date(reservationData.startTime).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const formattedEndTime = new Date(reservationData.endTime).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            const formattedDate = (0, date_utils_1.formatReservationDateBackend)(reservationData.date);
+            const formattedTimeRange = (0, date_utils_1.formatReservationTimeRangeBackend)(reservationData.startTime, reservationData.endTime);
+            const formattedStartTime = (0, date_utils_1.formatReservationTimeBackend)(reservationData.startTime);
             const mailOptions = {
                 from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
                 to: email,
@@ -268,7 +258,7 @@ let EmailService = EmailService_1 = class EmailService {
                                     </tr>
                                     <tr>
                                         <td style="padding: 8px 0; font-weight: bold; color: #374151;">🕐 Horario:</td>
-                                        <td style="padding: 8px 0; color: #1f2937;">${formattedStartTime} - ${formattedEndTime}</td>
+                                        <td style="padding: 8px 0; color: #1f2937;">${formattedTimeRange}</td>
                                     </tr>
                                     <tr>
                                         <td style="padding: 8px 0; font-weight: bold; color: #374151;">Jugadores:</td>
@@ -336,16 +326,8 @@ let EmailService = EmailService_1 = class EmailService {
             return;
         }
         try {
-            const formattedDate = new Date(reservationData.date).toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            const formattedStartTime = new Date(reservationData.startTime).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            const formattedDate = (0, date_utils_1.formatReservationDateBackend)(reservationData.date);
+            const formattedStartTime = (0, date_utils_1.formatReservationTimeBackend)(reservationData.startTime);
             const mailOptions = {
                 from: process.env.EMAIL_USER || 'noreply@gestioncanchas.com',
                 to: email,

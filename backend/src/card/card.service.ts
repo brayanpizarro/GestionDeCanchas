@@ -19,7 +19,15 @@ export class CardService {
       throw new BadRequestException(errors);
     }
 
-    const card = this.cardRepository.create({ ...createCardDto, user });
+    // Formatear la fecha de expiración como MM/YY
+    const expiry = `${createCardDto.expiryMonth.toString().padStart(2, '0')}/${createCardDto.expiryYear.toString().slice(-2)}`;
+
+    const card = this.cardRepository.create({ 
+      cardNumber: createCardDto.cardNumber,
+      holderName: createCardDto.holderName,
+      expiry,
+      user 
+    });
     return this.cardRepository.save(card);
   }
 

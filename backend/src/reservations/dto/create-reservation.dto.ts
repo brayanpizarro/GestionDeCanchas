@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsNumber, IsArray, ValidateNested, IsISO8601, IsPositive, IsInt, Min } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsArray, ValidateNested, IsISO8601, IsPositive, IsInt, Min, IsOptional } from 'class-validator';
 import {Type, Expose } from 'class-transformer';
 
 export class PlayerDto {
@@ -23,6 +23,33 @@ export class PlayerDto {
     @Min(1)
     @Type(() => Number)
     age: number;
+}
+
+export class SelectedEquipmentDto {
+    @Expose()
+    @IsNotEmpty()
+    @IsString()
+    id: string;
+
+    @Expose()
+    @IsNotEmpty()
+    @IsString()
+    name: string;
+
+    @Expose()
+    @IsNotEmpty()
+    @IsNumber()
+    @IsPositive()
+    @Type(() => Number)
+    price: number;
+
+    @Expose()
+    @IsNotEmpty()
+    @IsNumber()
+    @IsInt()
+    @IsPositive()
+    @Type(() => Number)
+    quantity: number;
 }
 
 export class CreateReservationDto {
@@ -57,4 +84,11 @@ export class CreateReservationDto {
     @ValidateNested({ each: true })
     @Type(() => PlayerDto)
     players: PlayerDto[];
+
+    @Expose()
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => SelectedEquipmentDto)
+    equipment?: SelectedEquipmentDto[];
 }

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext'; // Ajusta la ruta según tu estructura
 
+
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -50,25 +51,27 @@ const Navbar: React.FC = () => {
     }
     setIsOpen(false);// Cerrar el menú móvil si está abierto
     setIsUserMenuOpen(false);// Cerrar el menú de usuario si está abierto
-  };
-
-  return (
+  };  return (
     <nav className="bg-[#0A1838] py-3 px-4 fixed w-full top-0 z-50 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
         {/* Logo */}
         <Link
           to="/"
           onClick={() => handleNavigation('inicio')}
-          className="flex items-center"
+          className="flex items-center group"
         >
-          <img
-            src="/assets/imagenes/LogoUCN.jpeg"
-            alt="Logo UCENIN"
-            className="h-12 w-12 object-cover rounded-full"
+          <img 
+            src="../assets/imagenes/cropped_image.png" 
+            alt="Logo UCN" 
+            className="h-12 w-auto transition-transform duration-300 group-hover:scale-105"
           />
-          <span className="text-white text-xl ml-2 hidden md:block font-semibold">
-            Canchas UCENIN
-          </span>
+          <div className="ml-3">            <div className="text-white text-xl font-bold tracking-tight font-sans">
+              Universidad Católica del Norte
+            </div>
+            <div className="text-blue-300 text-xs font-medium -mt-1">
+              Reservas Deportivas
+            </div>
+          </div>
         </Link>
 
         {/* Navegación Desktop */}
@@ -120,10 +123,9 @@ const Navbar: React.FC = () => {
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Mi Panel
-                  </button>
-                  <button
+                  </button>                  <button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                   >
                     <LogOut size={16} className="mr-2" />
                     Cerrar Sesión

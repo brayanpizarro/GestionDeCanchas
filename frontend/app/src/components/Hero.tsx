@@ -16,8 +16,8 @@ const Hero: React.FC = () => {
       <div className="absolute inset-0 bg-gradient-to-b from-[#0A1838]/40 to-[#0A1838]/90" />
       
       <div className="relative container mx-auto px-4 h-full flex flex-col justify-center items-center text-center z-10">
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 md:mb-6 font-serif italic transform transition-all duration-700 hover:scale-105 leading-tight">
-          canchas UCENIN
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 md:mb-6 font-sans transform transition-all duration-700 hover:scale-105 leading-tight">
+          Canchas <span className= "text-blue-400">UCENIN</span>
         </h1>
         
         <p className="text-white text-sm sm:text-base md:text-lg lg:text-xl max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl mb-6 md:mb-10 leading-relaxed px-2">

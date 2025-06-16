@@ -35,6 +35,14 @@ export class Reservation {
     @OneToMany(() => Player, player => player.reservation, { cascade: true })
     players: Player[];
 
+    @Column({ type: "json", nullable: true })
+    equipment: {
+        id: string;
+        name: string;
+        price: number;
+        quantity: number;
+    }[] | null;
+
     @CreateDateColumn()
     createdAt: Date;
 }

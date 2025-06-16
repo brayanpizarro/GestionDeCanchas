@@ -17,6 +17,7 @@ const user_entity_1 = require("../users/entities/user.entity");
 const player_entity_1 = require("./entities/player.entity");
 const users_module_1 = require("../users/users.module");
 const auth_module_1 = require("../auth/auth.module");
+const products_module_1 = require("../products/products.module");
 const email_service_1 = require("../email/email.service");
 let ReservationsModule = class ReservationsModule {
 };
@@ -27,6 +28,7 @@ exports.ReservationsModule = ReservationsModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([reservation_entity_1.Reservation, court_entity_1.Court, user_entity_1.User, player_entity_1.Player]),
             (0, common_1.forwardRef)(() => users_module_1.UsersModule),
             (0, common_1.forwardRef)(() => auth_module_1.AuthModule),
+            products_module_1.ProductsModule,
         ],
         providers: [reservations_service_1.ReservationsService, email_service_1.EmailService],
         controllers: [reservations_controller_1.ReservationsController],

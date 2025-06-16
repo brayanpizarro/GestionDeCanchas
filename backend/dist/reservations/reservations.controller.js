@@ -37,6 +37,12 @@ let ReservationsController = class ReservationsController {
     findAll() {
         return this.reservationsService.findAll();
     }
+    async findAllReservations() {
+        console.log('🔍 Admin solicitando TODAS las reservas...');
+        const allReservations = await this.reservationsService.findAll();
+        console.log(`📊 Total de reservas encontradas: ${allReservations.length}`);
+        return allReservations;
+    }
     async getStats() {
         const [reservations, totalReservations] = await Promise.all([
             this.reservationsService.findAll(),
@@ -100,6 +106,22 @@ let ReservationsController = class ReservationsController {
     updateStatus(id, status) {
         return this.reservationsService.updateStatus(id, status);
     }
+    async getCourtStats() {
+        try {
+            console.log('🎯 Court stats endpoint called');
+            const stats = await this.reservationsService.getDetailedReservationStats();
+            console.log('📊 Returning stats:', stats);
+            return stats;
+        }
+        catch (error) {
+            console.error('❌ Error in court-stats endpoint:', error);
+            throw new common_1.BadRequestException(`Failed to get court statistics: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+    async testEndpoint() {
+        console.log('🧪 Test endpoint called');
+        return { status: 'ok', message: 'Reservations controller is working', timestamp: new Date().toISOString() };
+    }
 };
 exports.ReservationsController = ReservationsController;
 __decorate([
@@ -117,6 +139,12 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "findAll", null);
 __decorate([
+    (0, common_1.Get)('all'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "findAllReservations", null);
+__decorate([
     (0, common_1.Get)('stats'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
@@ -130,7 +158,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "findByUser", null);
 __decorate([
-    (0, common_1.Get)('courts/:courtId/available-slots'),
+    (0, common_1.Get)('available/:courtId'),
     __param(0, (0, common_1.Param)('courtId')),
     __param(1, (0, common_1.Query)('date')),
     __metadata("design:type", Function),
@@ -169,6 +197,18 @@ __decorate([
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "updateStatus", null);
+__decorate([
+    (0, common_1.Get)('court-stats'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "getCourtStats", null);
+__decorate([
+    (0, common_1.Get)('test'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "testEndpoint", null);
 exports.ReservationsController = ReservationsController = __decorate([
     (0, common_1.Controller)('reservations'),
     __metadata("design:paramtypes", [reservations_service_1.ReservationsService])

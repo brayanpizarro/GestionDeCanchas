@@ -34,8 +34,7 @@ const ReservationCalendar: React.FC<ReservationCalendarProps> = ({
     ]
 
     const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-    
-    const isDateDisabled = (date: Date) => {
+      const isDateDisabled = (date: Date) => {
         const dayOfWeek = date.getDay()
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
         const isTooSoon = date < oneWeekFromNow

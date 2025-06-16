@@ -25,6 +25,7 @@ const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const email_service_1 = require("../email/email.service");
 const users_service_1 = require("../users/users.service");
+const products_service_1 = require("../products/products.service");
 const rutValidator_1 = require("../utils/rutValidator");
 let ReservationsService = class ReservationsService {
     reservationsRepository;
@@ -33,20 +34,20 @@ let ReservationsService = class ReservationsService {
     playersRepository;
     usersService;
     emailService;
-    constructor(reservationsRepository, courtsRepository, usersRepository, playersRepository, usersService, emailService) {
+    productsService;
+    constructor(reservationsRepository, courtsRepository, usersRepository, playersRepository, usersService, emailService, productsService) {
         this.reservationsRepository = reservationsRepository;
         this.courtsRepository = courtsRepository;
         this.usersRepository = usersRepository;
         this.playersRepository = playersRepository;
         this.usersService = usersService;
         this.emailService = emailService;
+        this.productsService = productsService;
     }
     async create(rawDto) {
-        console.log('Raw DTO received:', rawDto);
         const dto = (0, class_transformer_1.plainToInstance)(create_reservation_dto_1.CreateReservationDto, rawDto, {
             excludeExtraneousValues: true,
         });
-        console.log('Transformed DTO:', dto);
         const validationErrors = await (0, class_validator_1.validate)(dto);
         if (validationErrors.length > 0) {
             console.error('Validation errors:', validationErrors.map(err => ({
@@ -61,7 +62,7 @@ let ReservationsService = class ReservationsService {
                 }))
             });
         }
-        const { courtId, userId, startTime, endTime, players } = dto;
+        const { courtId, userId, startTime, endTime, players, equipment } = dto;
         const court = await this.courtsRepository.findOneBy({ id: courtId });
         if (!court) {
             throw new common_1.NotFoundException(`Court with ID ${courtId} not found`);
@@ -94,15 +95,30 @@ let ReservationsService = class ReservationsService {
                 `Por favor, selecciona otro horario disponible.`);
         }
         const amount = this.calculateAmount(court, startTime, endTime);
+        console.log('💰 Monto calculado para la reserva:', amount);
+        let equipmentCost = 0;
+        if (equipment && equipment.length > 0) {
+            console.log('🎾 Procesando equipamiento:', equipment);
+            for (const item of equipment) {
+                const product = await this.productsService.findOne(parseInt(item.id));
+                if (product.stock < item.quantity) {
+                    throw new common_1.BadRequestException(`Stock insuficiente para ${product.name}. Stock disponible: ${product.stock}, solicitado: ${item.quantity}`);
+                }
+                equipmentCost += item.price * item.quantity;
+            }
+            console.log('💰 Costo total del equipamiento:', equipmentCost);
+        }
         const reservation = this.reservationsRepository.create({
             startTime: startDate,
             endTime: endDate,
             status: 'pending',
-            amount,
+            amount: amount + equipmentCost,
+            equipment: equipment || null,
             court,
             user,
         });
         const savedReservation = await this.reservationsRepository.save(reservation);
+        console.log('💾 Reserva guardada con monto:', savedReservation.amount);
         const rutSet = new Set();
         for (const playerDto of players) {
             const rutError = (0, rutValidator_1.getRutErrorMessage)(playerDto.rut);
@@ -122,6 +138,20 @@ let ReservationsService = class ReservationsService {
             });
         });
         savedReservation.players = await this.playersRepository.save(playerEntities);
+        if (equipment && equipment.length > 0) {
+            try {
+                console.log('📦 Reduciendo stock del equipamiento...');
+                for (const item of equipment) {
+                    await this.productsService.reduceStock(parseInt(item.id), item.quantity);
+                    console.log(`✅ Stock reducido para ${item.name}: ${item.quantity} unidades`);
+                }
+            }
+            catch (error) {
+                console.error('❌ Error reduciendo stock del equipamiento:', error);
+                await this.reservationsRepository.remove(savedReservation);
+                throw new common_1.BadRequestException('Error procesando el equipamiento. Reserva cancelada.');
+            }
+        }
         const finalReservation = await this.reservationsRepository.save(savedReservation);
         return finalReservation;
     }
@@ -179,13 +209,28 @@ let ReservationsService = class ReservationsService {
         const start = new Date(startTime);
         const end = new Date(endTime);
         const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        return court.pricePerHour * hours;
+        console.log('🧮 Calculando monto de reserva:');
+        console.log('   Cancha:', court.name);
+        console.log('   Precio por hora:', court.pricePerHour);
+        console.log('   Hora inicio:', start.toISOString());
+        console.log('   Hora fin:', end.toISOString());
+        console.log('   Duración (horas):', hours);
+        if (!court.pricePerHour || court.pricePerHour <= 0) {
+            console.error('❌ ERROR: La cancha no tiene un precio por hora válido');
+            throw new common_1.BadRequestException(`La cancha "${court.name}" no tiene un precio por hora configurado`);
+        }
+        const amount = Number(court.pricePerHour) * hours;
+        console.log('   Monto calculado:', amount);
+        return amount;
     }
     async findAll() {
         const reservations = await this.reservationsRepository.find({
             relations: ['court', 'user', 'players'],
         });
-        return reservations;
+        return reservations.map(reservation => ({
+            ...reservation,
+            amount: Number(reservation.amount)
+        }));
     }
     async findAllWithDeleted() {
         const reservations = await this.reservationsRepository.find({
@@ -217,7 +262,10 @@ let ReservationsService = class ReservationsService {
                 court: res.court?.name
             });
         });
-        return reservations;
+        return reservations.map(reservation => ({
+            ...reservation,
+            amount: Number(reservation.amount)
+        }));
     }
     async findOne(id) {
         if (!Number.isInteger(id) || id <= 0) {
@@ -230,6 +278,7 @@ let ReservationsService = class ReservationsService {
         if (!reservation) {
             throw new common_1.NotFoundException(`Reservation with ID ${id} not found`);
         }
+        reservation.amount = Number(reservation.amount);
         return reservation;
     }
     async updateStatus(id, status) {
@@ -245,6 +294,18 @@ let ReservationsService = class ReservationsService {
         const updatedReservation = await this.reservationsRepository.save(reservation);
         if (status === 'cancelled' && oldStatus !== 'cancelled') {
             try {
+                if (reservation.equipment && reservation.equipment.length > 0) {
+                    console.log('🔄 Restaurando stock del equipamiento cancelado...');
+                    for (const item of reservation.equipment) {
+                        try {
+                            await this.productsService.restoreStock(parseInt(item.id), item.quantity);
+                            console.log(`✅ Stock restaurado para ${item.name}: +${item.quantity} unidades`);
+                        }
+                        catch (error) {
+                            console.error(`❌ Error restaurando stock para ${item.name}:`, error);
+                        }
+                    }
+                }
                 console.log('Reserva cancelada - email de notificación pendiente');
             }
             catch (emailError) {
@@ -254,10 +315,11 @@ let ReservationsService = class ReservationsService {
         return updatedReservation;
     }
     async getAvailableTimeSlots(courtId, date) {
-        const targetDate = new Date(date);
-        const startOfDay = new Date(targetDate);
+        const [year, month, day] = date.split('-').map(Number);
+        const baseDate = new Date(year, month - 1, day);
+        const startOfDay = new Date(baseDate);
         startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(targetDate);
+        const endOfDay = new Date(baseDate);
         endOfDay.setHours(23, 59, 59, 999);
         const existingReservations = await this.reservationsRepository.find({
             where: {
@@ -267,19 +329,30 @@ let ReservationsService = class ReservationsService {
             },
             order: { startTime: 'ASC' }
         });
-        const allTimeSlots = [];
-        for (let hour = 8; hour <= 21; hour++) {
-            allTimeSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+        const timeSlots = [];
+        const scheduleSlots = [
+            { hour: 8, minute: 0 },
+            { hour: 9, minute: 30 },
+            { hour: 11, minute: 0 },
+            { hour: 12, minute: 30 },
+            { hour: 14, minute: 0 },
+            { hour: 15, minute: 30 },
+        ];
+        for (const slot of scheduleSlots) {
+            const startTime = new Date(Date.UTC(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate(), slot.hour, slot.minute, 0, 0));
+            const endTime = new Date(startTime.getTime() + 90 * 60 * 1000);
+            const hasConflict = existingReservations.some(reservation => {
+                const resStart = new Date(reservation.startTime);
+                const resEnd = new Date(reservation.endTime);
+                return (startTime < resEnd && endTime > resStart);
+            });
+            timeSlots.push({
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                available: !hasConflict
+            });
         }
-        const reservedSlots = existingReservations.map(reservation => {
-            const startHour = reservation.startTime.getHours();
-            return `${startHour.toString().padStart(2, '0')}:00`;
-        });
-        const availableSlots = allTimeSlots.filter(slot => !reservedSlots.includes(slot));
-        return {
-            available: availableSlots,
-            reserved: reservedSlots
-        };
+        return timeSlots;
     }
     async isCourtAvailable(courtId, startTime, endTime) {
         const conflictingReservations = await this.reservationsRepository.createQueryBuilder('reservation')
@@ -288,6 +361,63 @@ let ReservationsService = class ReservationsService {
             .andWhere('(reservation.startTime < :endTime AND reservation.endTime > :startTime)', { startTime, endTime })
             .getCount();
         return conflictingReservations === 0;
+    }
+    async getDetailedReservationStats() {
+        try {
+            console.log('🔍 Starting getDetailedReservationStats...');
+            console.log('🏟️ Fetching courts...');
+            const courts = await this.courtsRepository.find();
+            console.log(`✅ Found ${courts.length} courts:`, courts.map(c => ({ id: c.id, name: c.name })));
+            if (courts.length === 0) {
+                console.log('⚠️ No courts found, returning empty stats');
+                return [];
+            }
+            console.log('📊 Calculating stats for each court...');
+            const stats = await Promise.all(courts.map(async (court) => {
+                try {
+                    console.log(`🔍 Processing court: ${court.name} (ID: ${court.id})`);
+                    const reservations = await this.reservationsRepository
+                        .createQueryBuilder('reservation')
+                        .where('reservation.courtId = :courtId', { courtId: court.id })
+                        .getMany();
+                    console.log(`📋 Court ${court.name} has ${reservations.length} reservations`);
+                    const activeCount = reservations.filter(r => ['confirmed', 'completed', 'pending'].includes(r.status)).length;
+                    const cancelledCount = reservations.filter(r => r.status === 'cancelled').length;
+                    const completedCount = reservations.filter(r => r.status === 'completed').length;
+                    const revenue = reservations
+                        .filter(r => ['confirmed', 'completed'].includes(r.status))
+                        .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                    const courtStat = {
+                        courtId: court.id,
+                        court: court.name,
+                        reservations: activeCount,
+                        cancelled: cancelledCount,
+                        completed: completedCount,
+                        revenue: revenue
+                    };
+                    console.log(`✅ Court ${court.name} stats:`, courtStat);
+                    return courtStat;
+                }
+                catch (courtError) {
+                    console.error(`❌ Error processing court ${court.name}:`, courtError);
+                    return {
+                        courtId: court.id,
+                        court: court.name,
+                        reservations: 0,
+                        cancelled: 0,
+                        completed: 0,
+                        revenue: 0
+                    };
+                }
+            }));
+            console.log('🎉 Final stats calculated:', stats);
+            return stats;
+        }
+        catch (error) {
+            console.error('💥 Critical error in getDetailedReservationStats:', error);
+            console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace available');
+            throw new Error(`Failed to get court stats: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
 };
 exports.ReservationsService = ReservationsService;
@@ -303,6 +433,7 @@ exports.ReservationsService = ReservationsService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         users_service_1.UsersService,
-        email_service_1.EmailService])
+        email_service_1.EmailService,
+        products_service_1.ProductsService])
 ], ReservationsService);
 //# sourceMappingURL=reservations.service.js.map

@@ -55,12 +55,22 @@ export default {
     		},
     		fontFamily: {
     			sans: [
-    				'Raleway',
+    				'Roboto',
+    				'Open Sans',
     				'sans-serif'
     			],
     			serif: [
     				'Playfair Display',
     				'serif'
+    			],
+    			modern: [
+    				'Open Sans',
+    				'Roboto',
+    				'sans-serif'
+    			],
+    			fancy: [
+    				'Poppins',
+    				'sans-serif'
     			]
     		},
     		animation: {

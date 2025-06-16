@@ -25,6 +25,7 @@ let Reservation = class Reservation {
     court;
     courtId;
     players;
+    equipment;
     createdAt;
 };
 exports.Reservation = Reservation;
@@ -68,6 +69,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => player_entity_1.Player, player => player.reservation, { cascade: true }),
     __metadata("design:type", Array)
 ], Reservation.prototype, "players", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: "json", nullable: true }),
+    __metadata("design:type", Object)
+], Reservation.prototype, "equipment", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

@@ -17,13 +17,42 @@ export class ReservationService {
     if (!response.ok) throw new Error("Error fetching all reservations")
     return response.json()
   }
-
-  static async getReservationStats(): Promise<ReservationStats[]> {
+  static async getReservationStats(): Promise<{
+    total: number;
+    pending: number;
+    confirmed: number;
+    completed: number;
+    cancelled: number;
+    todayReservations: number;
+    courtStats: ReservationStats[];
+  }> {
     const response = await fetch(`${API_BASE_URL}/reservations/stats`, {
       headers: getAuthHeaders(),
     })
     if (!response.ok) throw new Error("Error fetching reservation stats")
     return response.json()
+  }
+  static async getDetailedCourtStats(): Promise<ReservationStats[]> {
+    try {
+      console.log('🔍 Fetching detailed court stats...');
+      const response = await fetch(`${API_BASE_URL}/reservations/court-stats`, {
+        headers: getAuthHeaders(),
+      })
+      
+      console.log('📡 Response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching detailed court stats: ${response.status} ${response.statusText}`)
+      }
+      
+      const data = await response.json();
+      console.log('📊 Received court stats:', data);
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Error in getDetailedCourtStats:', error);
+      throw error;
+    }
   }
 
   static async getDashboardStats() {
@@ -48,7 +77,7 @@ export class ReservationService {
 
       const slots = await response.json()
       
-      return slots.map((slot: any) => ({
+      return slots.map((slot: TimeSlot) => ({
         ...slot,
         startTime: new Date(slot.startTime),
         endTime: new Date(slot.endTime),
@@ -79,7 +108,13 @@ export class ReservationService {
       }
 
       const slots = await response.json()
-      return slots.map((slot: any) => ({
+      return slots.map((slot: {
+        startTime: string;
+        endTime: string;
+        isAvailable: boolean;
+        status?: 'confirmed' | 'pending';
+        reservationId?: number;
+      }) => ({
         ...slot,
         startTime: new Date(slot.startTime),
         endTime: new Date(slot.endTime),
@@ -92,8 +127,7 @@ export class ReservationService {
   static async createReservation(reservationData: CreateReservationDto) {
     try {
       console.log('Sending reservation data:', JSON.stringify(reservationData, null, 2));
-      
-      const response = await fetch(`${API_BASE_URL}/reservations`, {
+        const response = await fetch(`${API_BASE_URL}/reservations`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -105,6 +139,17 @@ export class ReservationService {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('Server response:', response.status, errorText)
+        
+        // Intentar parsear el error JSON para extraer el mensaje específico
+        try {
+          const errorData = JSON.parse(errorText)
+          if (errorData.message) {
+            throw new Error(errorData.message)
+          }
+        } catch (parseError) {
+          // Si no se puede parsear, usar el texto completo
+        }
+        
         throw new Error(`Error ${response.status}: ${errorText || "Error creating reservation"}`)
       }
 

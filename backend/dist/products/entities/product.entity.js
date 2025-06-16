@@ -17,6 +17,7 @@ let Product = class Product {
     description;
     price;
     stock;
+    sold;
     category;
     available;
     imagePath;
@@ -46,6 +47,10 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", Number)
 ], Product.prototype, "stock", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], Product.prototype, "sold", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)

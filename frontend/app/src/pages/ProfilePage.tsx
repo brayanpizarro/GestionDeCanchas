@@ -5,35 +5,21 @@ import { updatePassword } from '../service/authService';
 import { UserService } from '../service/userService';
 import { reservationService } from '../service/reservationService';
 import { formatChileanCurrency } from '../utils/currency';
+import { formatReservationFullDate, formatReservationTimeRange } from '../utils/dateUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { BalanceModal } from '../components/BalanceModal';
-import { CreditCard, Key, History, Wallet, Edit2, Plus, Eye, EyeOff, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Key, History, Wallet, Edit2, Plus, Eye, EyeOff, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 // Interfaces para tipado
-interface Card {
-    id: string;
-    brand: string;
-    last4: string;
-    expiry: string;
-}
-
-interface User {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    balance: number;
-    cards?: Card[];
-}
-
 interface Reservation {
     id: string;
     court: string;
-    date: string;
-    time: string;
+    startTime: string;
+    endTime: string;
     duration: number;
     total: number;
+    amount?: number;
     equipment?: string[];
     status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
     notificationType?: number; // 1 para reservas no canceladas después de tomarlas
@@ -107,7 +93,7 @@ const ProfilePage: React.FC = () => {
         }
     };    // Función para verificar si una reserva se puede cancelar
     const canCancelReservation = (reservation: Reservation) => {
-        const reservationDate = new Date(reservation.date);
+        const reservationDate = new Date(reservation.startTime);
         const now = new Date();
         const timeDiff = reservationDate.getTime() - now.getTime();
         
@@ -170,8 +156,7 @@ const ProfilePage: React.FC = () => {
             if (!user?.id) return;
             
             try {
-                setLoading(true);
-                const userReservations = await reservationService.getReservationsByUser(parseInt(user.id));                
+                setLoading(true);                const userReservations = await reservationService.getReservationsByUser(parseInt(user.id));                
                 // Transformar los datos para que coincidan con la interfaz local
                 const transformedReservations: Reservation[] = userReservations.map((res: unknown) => {
                     const reservation = res as {
@@ -184,26 +169,20 @@ const ProfilePage: React.FC = () => {
                     };
                     
                     // Determinar tipo de notificación
-                    const notificationType = (reservation.status === 'confirmed' || reservation.status === 'completed') ? 1 : undefined;
-                    
-                    // Convertir fechas
+                    const notificationType = (reservation.status === 'confirmed' || reservation.status === 'completed') ? 1 : undefined;                    // Convertir fechas
                     const startDate = new Date(reservation.startTime);
                     const endDate = new Date(reservation.endTime);
-                    
-                    return {
+                      return {
                         id: reservation.id.toString(),
                         court: reservation.court?.name || 'Cancha desconocida',
-                        date: reservation.startTime, // Fecha ISO de la reserva (día y hora elegidos)
-                        time: startDate.toLocaleTimeString('es-CL', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                        }),
+                        startTime: reservation.startTime,
+                        endTime: reservation.endTime,
                         duration: Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60)), // Duración en minutos
                         total: reservation.amount || 0,
+                        amount: reservation.amount || 0,
                         equipment: [],
                         status: reservation.status,
-                        notificationType: notificationType
-                    };
+                        notificationType: notificationType                    };
                 });
                 
                 setReservations(transformedReservations);
@@ -325,29 +304,7 @@ const ProfilePage: React.FC = () => {
             setCurrentBalance(newBalance);
         } catch (error) {
             console.error('Error al recargar saldo:', error);
-            throw error;
-        }
-    };
-
-    const handleRemoveCard = async (cardId: string) => {
-        if (!confirm('¿Estás seguro de que quieres eliminar esta tarjeta?')) {
-            return;
-        }
-
-        try {
-            setLoading(true);
-            setError(null);
-            // Aquí implementarías la lógica para eliminar la tarjeta
-            // await removeCardFromUser(cardId);
-            
-            console.log('Removing card:', cardId);
-            // Recargar datos del usuario si es necesario
-        } catch (error) {
-            setError('Error al eliminar la tarjeta');
-            console.error('Remove card error:', error);
-        } finally {
-            setLoading(false);
-        }
+            throw error;        }
     };
 
     if (!user) {
@@ -383,11 +340,11 @@ const ProfilePage: React.FC = () => {
                     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                         <div className="flex items-center space-x-4">
                             <div className="w-16 h-16 bg-[#071d40] rounded-full flex items-center justify-center text-white text-2xl">
-                                {user?.firstName?.[0] ?? ''}{user?.lastName?.[0] ?? ''}
+                                {user?.name?.[0] ?? ''}
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold text-[#071d40]">
-                                    {user.firstName} {user.lastName}
+                                    {user.name}
                                 </h1>
                                 <p className="text-gray-600">{user.email}</p>
                             </div>
@@ -457,25 +414,13 @@ const ProfilePage: React.FC = () => {
                                 {activeTab === 'info' && (
                                     <div>
                                         <h2 className="text-xl font-semibold mb-6">Información Personal</h2>
-                                        <div className="space-y-4">
-                                            <div>
+                                        <div className="space-y-4">                                            <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Nombre
+                                                    Nombre Completo
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    value={user.firstName || ''}
-                                                    className="w-full px-4 py-2 border rounded-md bg-gray-50"
-                                                    disabled
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Apellido
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={user.lastName || ''}
+                                                    value={user.name || ''}
                                                     className="w-full px-4 py-2 border rounded-md bg-gray-50"
                                                     disabled
                                                 />
@@ -591,34 +536,8 @@ const ProfilePage: React.FC = () => {
                                                     <Plus className="h-5 w-5 mr-1" />
                                                     Agregar tarjeta
                                                 </button>
-                                            </div>
-
-                                            {user.cards && user.cards.length > 0 ? (
-                                                user.cards.map(card => (
-                                                    <div
-                                                        key={card.id}
-                                                        className="border rounded-lg p-4 flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center">
-                                                            <CreditCard className="h-6 w-6 text-gray-500 mr-3" />
-                                                            <div>
-                                                                <p className="font-medium">
-                                                                    {card.brand} terminada en {card.last4}
-                                                                </p>
-                                                                <p className="text-sm text-gray-500">Expira: {card.expiry}</p>
-                                                            </div>
-                                                        </div>
-                                                        <button 
-                                                            onClick={() => handleRemoveCard(card.id)}
-                                                            className="text-red-500 hover:text-red-600 text-sm transition"
-                                                        >
-                                                            Eliminar
-                                                        </button>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-gray-500 text-center py-4">No tienes tarjetas guardadas</p>
-                                            )}
+                                            </div>                                            {/* Funcionalidad de tarjetas temporalmente deshabilitada */}
+                                            <p className="text-gray-500 text-center py-4">No tienes tarjetas guardadas</p>
                                         </div>
 
                                         {/* Add Card Modal */}
@@ -707,27 +626,11 @@ const ProfilePage: React.FC = () => {
                                                                 className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-[#071d40] focus:border-transparent"
                                                                 placeholder="10000"
                                                                 required
-                                                            />
+                                                            />                                                        </div>
+                                                        {/* Funcionalidad de tarjetas temporalmente deshabilitada */}
+                                                        <div>
+                                                            <p className="text-sm text-gray-500">Las tarjetas guardadas están temporalmente deshabilitadas</p>
                                                         </div>
-                                                        {user.cards && user.cards.length > 0 && (
-                                                            <div>
-                                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                                    Seleccionar tarjeta
-                                                                </label>
-                                                                <select 
-                                                                    name="cardId"
-                                                                    className="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-[#071d40] focus:border-transparent"
-                                                                    required
-                                                                >
-                                                                    <option value="">Selecciona una tarjeta</option>
-                                                                    {user.cards.map(card => (
-                                                                        <option key={card.id} value={card.id}>
-                                                                            {card.brand} terminada en {card.last4}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        )}
                                                         <div className="flex justify-end space-x-3 mt-6">
                                                             <button
                                                                 type="button"
@@ -735,10 +638,9 @@ const ProfilePage: React.FC = () => {
                                                                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition"
                                                             >
                                                                 Cancelar
-                                                            </button>
-                                                            <button
+                                                            </button>                                                            <button
                                                                 type="submit"
-                                                                disabled={loading || !user.cards || user.cards.length === 0}
+                                                                disabled={loading}
                                                                 className="bg-[#071d40] text-white px-4 py-2 rounded-md hover:bg-[#122e5e] transition disabled:opacity-50"
                                                             >
                                                                 {loading ? 'Recargando...' : 'Recargar'}
@@ -791,19 +693,11 @@ const ProfilePage: React.FC = () => {
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            
-                                                            <div className="flex justify-between items-start mb-3">
-                                                                <div className="flex-1">                                                                    <h3 className="font-medium text-lg">{reservation.court}</h3>
-                                                                    <p className="text-sm text-gray-600 mt-1">
-                                                                        {new Date(reservation.date).toLocaleDateString('es-ES', {
-                                                                            weekday: 'long',
-                                                                            year: 'numeric',
-                                                                            month: 'long',
-                                                                            day: 'numeric'
-                                                                        })}
-                                                                    </p>
-                                                                    <p className="text-sm text-gray-600">
-                                                                        {reservation.time} ({reservation.duration} minutos)
+                                                              <div className="flex justify-between items-start mb-3">
+                                                                <div className="flex-1">                                                                    <h3 className="font-medium text-lg">{reservation.court}</h3>                                                                    <p className="text-sm text-gray-600 mt-1">
+                                                                        {formatReservationFullDate(reservation.startTime)}
+                                                                    </p>                                                                    <p className="text-sm text-gray-600">
+                                                                        {formatReservationTimeRange(reservation.startTime, reservation.endTime)} ({reservation.duration} minutos)
                                                                     </p>
                                                                     
                                                                     {/* Estado de la reserva */}

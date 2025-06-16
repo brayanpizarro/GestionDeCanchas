@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { formatReservationDateBackend, formatReservationTimeRangeBackend, formatReservationTimeBackend } from '../utils/date.utils';
 
 @Injectable()
 export class EmailService {
@@ -207,22 +208,9 @@ export class EmailService {
             this.logger.log(`Destinatario: ${email}`);
             this.logger.log(`Cancha: ${reservationData.courtName}`);
 
-            const formattedDate = new Date(reservationData.date).toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-
-            const formattedStartTime = new Date(reservationData.startTime).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-
-            const formattedEndTime = new Date(reservationData.endTime).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            const formattedDate = formatReservationDateBackend(reservationData.date);
+            const formattedTimeRange = formatReservationTimeRangeBackend(reservationData.startTime, reservationData.endTime);
+            const formattedStartTime = formatReservationTimeBackend(reservationData.startTime);
 
             const mailOptions = {
                 from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
@@ -255,7 +243,7 @@ export class EmailService {
                                     </tr>
                                     <tr>
                                         <td style="padding: 8px 0; font-weight: bold; color: #374151;">🕐 Horario:</td>
-                                        <td style="padding: 8px 0; color: #1f2937;">${formattedStartTime} - ${formattedEndTime}</td>
+                                        <td style="padding: 8px 0; color: #1f2937;">${formattedTimeRange}</td>
                                     </tr>
                                     <tr>
                                         <td style="padding: 8px 0; font-weight: bold; color: #374151;">Jugadores:</td>
@@ -336,17 +324,8 @@ export class EmailService {
         }
 
         try {
-            const formattedDate = new Date(reservationData.date).toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-
-            const formattedStartTime = new Date(reservationData.startTime).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            const formattedDate = formatReservationDateBackend(reservationData.date);
+            const formattedStartTime = formatReservationTimeBackend(reservationData.startTime);
 
             const mailOptions = {
                 from: process.env.EMAIL_USER || 'noreply@gestioncanchas.com',

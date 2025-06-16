@@ -17,6 +17,9 @@ export class Product {
     @Column()
     stock: number;
 
+    @Column({ default: 0 })
+    sold: number;
+
     @Column()
     category: string;
 

@@ -12,5 +12,11 @@ export declare class Reservation {
     court: Court;
     courtId: number;
     players: Player[];
+    equipment: {
+        id: string;
+        name: string;
+        price: number;
+        quantity: number;
+    }[] | null;
     createdAt: Date;
 }

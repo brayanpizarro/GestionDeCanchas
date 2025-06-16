@@ -4,6 +4,7 @@ export declare class Product {
     description: string;
     price: number;
     stock: number;
+    sold: number;
     category: string;
     available: boolean;
     imagePath: string;

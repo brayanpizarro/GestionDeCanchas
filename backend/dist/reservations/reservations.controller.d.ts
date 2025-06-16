@@ -5,6 +5,7 @@ export declare class ReservationsController {
     constructor(reservationsService: ReservationsService);
     create(createReservationDto: CreateReservationDto): Promise<import("./entities/reservation.entity").Reservation>;
     findAll(): Promise<import("./entities/reservation.entity").Reservation[]>;
+    findAllReservations(): Promise<import("./entities/reservation.entity").Reservation[]>;
     getStats(): Promise<{
         total: number;
         pending: number;
@@ -19,10 +20,7 @@ export declare class ReservationsController {
         }[];
     }>;
     findByUser(userId: number): Promise<import("./entities/reservation.entity").Reservation[]>;
-    getAvailableTimeSlots(courtId: number, date: string): Promise<{
-        available: string[];
-        reserved: string[];
-    }>;
+    getAvailableTimeSlots(courtId: number, date: string): Promise<any>;
     checkCourtAvailability(courtId: number, startTime: string, endTime: string): Promise<{
         courtId: number;
         startTime: string;
@@ -35,4 +33,10 @@ export declare class ReservationsController {
     }>;
     findOne(id: number): Promise<import("./entities/reservation.entity").Reservation>;
     updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<import("./entities/reservation.entity").Reservation>;
+    getCourtStats(): Promise<any[]>;
+    testEndpoint(): Promise<{
+        status: string;
+        message: string;
+        timestamp: string;
+    }>;
 }

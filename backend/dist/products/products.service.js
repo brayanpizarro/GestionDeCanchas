@@ -284,6 +284,43 @@ let ProductsService = ProductsService_1 = class ProductsService {
             throw new common_1.InternalServerErrorException('Failed to retrieve recent movements');
         }
     }
+    async reduceStock(productId, quantity) {
+        try {
+            const product = await this.findOne(productId);
+            if (product.stock < quantity) {
+                throw new common_1.BadRequestException(`Stock insuficiente para ${product.name}. Stock disponible: ${product.stock}, solicitado: ${quantity}`);
+            }
+            product.stock -= quantity;
+            product.sold = (product.sold || 0) + quantity;
+            const updatedProduct = await this.productsRepository.save(product);
+            this.logger.log(`Stock reducido para ${product.name}: ${product.stock + quantity} -> ${product.stock}`);
+            return updatedProduct;
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException || error instanceof common_1.BadRequestException) {
+                throw error;
+            }
+            this.logger.error(`Error reducing stock for product ${productId}:`, error);
+            throw new common_1.InternalServerErrorException('Failed to reduce product stock');
+        }
+    }
+    async restoreStock(productId, quantity) {
+        try {
+            const product = await this.findOne(productId);
+            product.stock += quantity;
+            product.sold = Math.max((product.sold || 0) - quantity, 0);
+            const updatedProduct = await this.productsRepository.save(product);
+            this.logger.log(`Stock restaurado para ${product.name}: ${product.stock - quantity} -> ${product.stock}`);
+            return updatedProduct;
+        }
+        catch (error) {
+            if (error instanceof common_1.NotFoundException) {
+                throw error;
+            }
+            this.logger.error(`Error restoring stock for product ${productId}:`, error);
+            throw new common_1.InternalServerErrorException('Failed to restore product stock');
+        }
+    }
 };
 exports.ProductsService = ProductsService;
 exports.ProductsService = ProductsService = ProductsService_1 = __decorate([

@@ -1,15 +1,17 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { Users, BarChart3, Package, Plus, ChevronDown, Building2, Loader2, Calendar, Home } from "lucide-react"
+import { Users, BarChart3, Package, Plus, ChevronDown, Building2, Loader2, Calendar, Home, CreditCard } from "lucide-react"
 import StatCard from "../components/admin/StatCard"
 import ChangePasswordModal from "../components/admin/ChangePasswordModal"
 import UsersTable from "../components/admin/UsersTable"
 import CreateCourtModal from "../components/admin/CreateCourtModal"
 import CreateProductModal from "../components/admin/CreateProductModal"
+import VirtualWallet from "../components/admin/VirtualWallet"
 import {CourtService} from "../service/courtService"
 import { ReservationService} from "../service/reservationService"
 import { formatChileanCurrency } from "../utils/currency"
+import { formatReservationDate, formatReservationTimeRange, formatReservationFullDate } from "../utils/dateUtils"
 import { ProductService } from "../service/productService"
 import { UserService } from "../service/userService"
 import type { Court, ReservationStats, Product, User, CreateCourtFormData, CreateProductFormData } from "../types"
@@ -18,12 +20,13 @@ interface AdminReservation {
   id: string | number
   user?: { name: string }
   userName?: string
-  court?: { name: string }
+  court?: { name: string; id: string | number }
+  courtId?: string | number
   courtName?: string
-  date?: string
   startTime: string
   endTime: string
   status: "pending" | "confirmed" | "completed" | "cancelled"
+  amount?: number
   totalPrice?: number
   total?: number
 }
@@ -38,9 +41,13 @@ function AdminDashboard() {
   const [reservations, setReservations] = useState<AdminReservation[]>([]) // Added reservations state
   const [products, setProducts] = useState<Product[]>([])
   const [users, setUsers] = useState<User[]>([])
+  // Balance states for admin
+  const [adminBalance, setAdminBalance] = useState<number>(0)
+  const [isUpdatingBalance, setIsUpdatingBalance] = useState(false)
+  
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null)
+  const [currentUser, setCurrentUser] = useState<{ id: number; name: string; email: string } | null>(null)
   // UI States
   const [isCreateCourtModalOpen, setIsCreateCourtModalOpen] = useState(false)
   const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false)
@@ -57,7 +64,117 @@ function AdminDashboard() {
   const [cancellingReservation, setCancellingReservation] = useState<AdminReservation | null>(null)
   const [cancellationReason, setCancellationReason] = useState("")
   const [isCancelling, setIsCancelling] = useState(false)
-  // Load initial data
+    const loadInitialData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      console.log('🔄 Loading initial data...')
+      
+      // Get current user for balance request directly from localStorage
+      const userDataStr = localStorage.getItem("user")
+      const userData = userDataStr ? JSON.parse(userDataStr) : null
+      console.log('👤 Current user:', userData)      // Prepare promises - only include balance if we have a valid user ID
+      const promises = [
+        CourtService.getCourts(),
+        // Try to get all reservations for admin, fallback to regular if needed
+        ReservationService.getAllReservations().catch(() => ReservationService.getReservations()),
+        ProductService.getProducts(),
+        UserService.getUsers(),
+      ];
+      
+      // Only add balance promise if we have a valid user ID
+      if (userData?.id && userData.id > 0) {
+        promises.push(UserService.getUserBalance(userData.id));
+      } else {
+        promises.push(Promise.resolve(0)); // Default balance of 0
+      }
+        const [courtsData, reservationsData, productsData, usersData, balanceData] = await Promise.allSettled(promises);
+
+      console.log('📊 Promise results:', {
+        courts: courtsData.status,
+        reservations: reservationsData.status,
+        products: productsData.status,
+        users: usersData.status,
+        balance: balanceData.status      });
+
+      if (courtsData.status === "fulfilled") {
+        console.log('🏟️ Courts loaded:', courtsData.value);
+        setCourts(courtsData.value)
+        
+        // Si también tenemos las reservas, crear estadísticas reales
+        if (reservationsData.status === "fulfilled") {
+          console.log('� Reservations loaded:', reservationsData.value);
+          setReservations(reservationsData.value)
+            // Crear estadísticas agrupando las reservas por cancha
+          const courtStats = courtsData.value.map((court: Court) => {
+            const courtReservations = reservationsData.value.filter((reservation: AdminReservation) => 
+              reservation.court?.id === court.id || reservation.courtId === court.id
+            );
+            
+            const confirmedReservations = courtReservations.filter((r: AdminReservation) => 
+              r.status === 'confirmed' || r.status === 'completed'
+            );
+            const cancelledReservations = courtReservations.filter((r: AdminReservation) => 
+              r.status === 'cancelled'
+            );
+            
+            console.log(`📊 Court ${court.name}:`, {
+              total: courtReservations.length,
+              confirmed: confirmedReservations.length,
+              cancelled: cancelledReservations.length,
+              reservations: courtReservations
+            });
+            
+            return {
+              courtId: court.id,
+              court: court.name,
+              reservations: confirmedReservations.length,
+              cancelled: cancelledReservations.length,
+              completed: 0,
+              revenue: 0
+            };
+          });
+          
+          console.log('📊 Court stats created from real data:', courtStats);
+          setReservationStats(courtStats);
+        } else {
+          // Fallback: crear estadísticas vacías
+          const emptyStats = courtsData.value.map((court: Court) => ({
+            courtId: court.id,
+            court: court.name,
+            reservations: 0,
+            cancelled: 0,
+            completed: 0,
+            revenue: 0
+          }));
+          
+          console.log('📊 Empty stats created (no reservations data):', emptyStats);
+          setReservationStats(emptyStats);
+        }
+      } else {
+        console.log('❌ Failed to load courts data');
+      }
+
+      if (productsData.status === "fulfilled") {
+        setProducts(productsData.value)
+      }
+
+      if (usersData.status === "fulfilled") {
+        setUsers(usersData.value)
+      }
+
+      if (balanceData.status === "fulfilled") {
+        setAdminBalance(balanceData.value)
+      }
+    } catch (err) {
+      console.error("Error loading initial data:", err)
+      setError("Error al cargar los datos. Intenta recargar la página.")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+  // Load initial data once on mount
   useEffect(() => {
     const loadCurrentUser = () => {
       const userDataStr = localStorage.getItem("user")
@@ -69,47 +186,7 @@ function AdminDashboard() {
 
     loadCurrentUser()
     loadInitialData()
-  }, [])
-  const loadInitialData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const [courtsData, statsData, reservationsData, productsData, usersData] = await Promise.allSettled([
-        CourtService.getCourts(),
-        ReservationService.getReservationStats(),
-        // Try to get all reservations for admin, fallback to regular if needed
-        ReservationService.getAllReservations().catch(() => ReservationService.getReservations()),
-        ProductService.getProducts(),
-        UserService.getUsers(),
-      ])
-
-      if (courtsData.status === "fulfilled") {
-        setCourts(courtsData.value)
-      }
-
-      if (statsData.status === "fulfilled") {
-        setReservationStats(statsData.value)
-      }
-
-      if (reservationsData.status === "fulfilled") {
-        setReservations(reservationsData.value)
-      }
-
-      if (productsData.status === "fulfilled") {
-        setProducts(productsData.value)
-      }
-
-      if (usersData.status === "fulfilled") {
-        setUsers(usersData.value)
-      }
-    } catch (err) {
-      console.error("Error loading initial data:", err)
-      setError("Error al cargar los datos. Intenta recargar la página.")
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [loadInitialData]) // Include loadInitialData as dependency
 
   const handleCreateCourt = async (data: CreateCourtFormData) => {
     try {
@@ -289,6 +366,20 @@ function AdminDashboard() {
     } catch (error) {
       console.error("Error deleting product:", error)
       alert(error instanceof Error ? error.message : "Error al eliminar el producto")
+    }  }
+
+  // Balance management functions
+  const handleAddBalance = async (amount: number) => {
+    try {
+      setIsUpdatingBalance(true)
+      const newBalance = await UserService.addBalance(currentUser?.id || 0, amount)
+      setAdminBalance(newBalance)
+      alert(`Se agregaron ${formatChileanCurrency(amount)} a tu saldo`)
+    } catch (error) {
+      console.error("Error adding balance:", error)
+      alert(error instanceof Error ? error.message : "Error al agregar saldo")
+    } finally {
+      setIsUpdatingBalance(false)
     }
   }
 
@@ -311,7 +402,7 @@ function AdminDashboard() {
       title: "Reservas Hoy",
       value: reservations.filter(r => {
         const today = new Date().toDateString()
-        const reservationDate = new Date(r.date || r.startTime).toDateString()
+        const reservationDate = new Date(r.startTime).toDateString()
         return reservationDate === today
       }).length,
       subtitle: "reservas programadas",
@@ -354,11 +445,10 @@ function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <div className="bg-[#0A1838] py-3 px-4 shadow-md text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">          <div className="flex items-center justify-between h-16">
             <h1 className="text-lg sm:text-xl font-semibold truncate">Panel Administrativo - Canchas de Padel</h1>
             <div className="relative">
-              <button
+                <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 className="flex items-center space-x-2 sm:space-x-3 focus:outline-none"
               >
@@ -420,6 +510,7 @@ function AdminDashboard() {
               { id: "productos", label: "Productos", icon: Package },
               { id: "canchas", label: "Canchas", icon: Building2 },
               { id: "usuarios", label: "Usuarios", icon: Users },
+              { id: "tarjeta", label: "Mi Billetera", icon: CreditCard },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -433,9 +524,9 @@ function AdminDashboard() {
                 <tab.icon className="w-4 h-4 mr-2" />
                 {tab.label}
               </button>
-            ))}
-          </nav>
-        </div>      </div>
+            ))}          </nav>
+        </div>
+      </div>
 
       {/* Main Content Container */}
       <div className="flex-1">
@@ -457,47 +548,105 @@ function AdminDashboard() {
         {/* Dashboard Content */}
         {activeTab === "dashboard" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-            {/* Court Usage Chart */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
+            {/* Court Usage Chart */}            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">Uso de Canchas</h2>
-                <span className="text-xs sm:text-sm text-gray-500">Reservas por cancha esta semana</span>
+                <span className="text-xs sm:text-sm text-gray-500">Total de reservas por cancha (confirmadas y canceladas)</span>
               </div>
               <div className="space-y-4">
                 {reservationStats.length > 0 ? (
                   reservationStats.map((stat) => (
-                    <div key={stat.courtId} className="flex items-center">
-                      <div
-                        className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${
-                          stat.reservations === 0
-                            ? "bg-red-500"
-                            : stat.reservations < 5
-                              ? "bg-yellow-500"
-                              : "bg-green-500"
-                        }`}
-                      ></div>
-                      <span className="text-sm font-medium text-gray-700 w-16 sm:w-20 flex-shrink-0">{stat.court}</span>
-                      <div className="flex-1 mx-4">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${
-                              stat.reservations === 0
-                                ? "bg-red-500"
-                                : stat.reservations < 5
-                                  ? "bg-yellow-500"
-                                  : "bg-blue-600"
-                            }`}
-                            style={{ width: `${Math.min((stat.reservations / 20) * 100, 100)}%` }}
-                          ></div>
+                    <div key={stat.courtId} className="space-y-2">                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{stat.court}</span>
+                        <div className="flex items-center space-x-4 text-xs text-gray-500">
+                          <span className="font-medium text-gray-900">
+                            {(stat.reservations || 0) + (stat.cancelled || 0)} reservas
+                          </span>
+                          <span className="text-gray-500">
+                            ({stat.reservations || 0} confirmadas, {stat.cancelled || 0} canceladas)
+                          </span>
                         </div>
+                      </div>                      <div className="flex items-center">
+                        <div
+                          className={`w-3 h-3 rounded-full mr-3 flex-shrink-0 ${
+                            (stat.reservations || 0) + (stat.cancelled || 0) === 0
+                              ? "bg-red-500"
+                              : (stat.reservations || 0) + (stat.cancelled || 0) < 5
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                          }`}
+                        ></div>
+                        <div className="flex-1 mr-4">
+                          <div className="w-full bg-gray-200 rounded-full h-3 relative overflow-hidden">
+                            {/* Total de reservas como base */}
+                            {(() => {
+                              const totalReservations = (stat.reservations || 0) + (stat.cancelled || 0);
+                              const confirmedWidth = totalReservations > 0 ? ((stat.reservations || 0) / totalReservations) * 100 : 0;
+                              const cancelledWidth = totalReservations > 0 ? ((stat.cancelled || 0) / totalReservations) * 100 : 0;
+                              
+                              return (
+                                <>
+                                  {/* Barra de reservas confirmadas (azul) */}
+                                  {stat.reservations && stat.reservations > 0 && (
+                                    <div
+                                      className="absolute left-0 top-0 h-3 bg-blue-600 rounded-l-full"
+                                      style={{ width: `${confirmedWidth}%` }}
+                                    ></div>
+                                  )}
+                                  {/* Barra de reservas canceladas (rojo) */}
+                                  {stat.cancelled && stat.cancelled > 0 && (
+                                    <div 
+                                      className="absolute top-0 h-3 bg-red-500"
+                                      style={{ 
+                                        left: `${confirmedWidth}%`,
+                                        width: `${cancelledWidth}%`,
+                                        borderRadius: confirmedWidth === 0 ? '0.75rem 0.75rem 0.75rem 0.75rem' : '0 0.75rem 0.75rem 0'
+                                      }}
+                                    ></div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                          {/* Leyenda de colores debajo de la barra */}
+                          <div className="flex items-center justify-start mt-1 space-x-4 text-xs">
+                            {stat.reservations && stat.reservations > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                <span className="text-gray-600">{stat.reservations} confirmadas</span>
+                              </div>
+                            )}
+                            {stat.cancelled && stat.cancelled > 0 && (
+                              <div className="flex items-center space-x-1">
+                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                <span className="text-gray-600">{stat.cancelled} canceladas</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900 w-8 text-right flex-shrink-0">
+                          {(stat.reservations || 0) + (stat.cancelled || 0)}
+                        </span>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 w-8 text-right flex-shrink-0">
-                        {stat.reservations}
-                      </span>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">No hay datos de reservas disponibles</div>
+                  ))                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No hay datos de reservas disponibles</p>
+                    <p className="text-xs mt-2">
+                      Stats length: {reservationStats?.length || 0} | 
+                      Courts length: {courts?.length || 0}
+                    </p>
+                    {courts.length > 0 && (
+                      <div className="mt-4 text-left">
+                        <p className="text-sm font-medium">Canchas disponibles:</p>
+                        {courts.map(court => (
+                          <p key={court.id} className="text-xs">
+                            - {court.name} (ID: {court.id})
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -543,11 +692,8 @@ function AdminDashboard() {
                 <h2 className="text-lg font-semibold text-gray-900">Gestión de Reservas</h2>
                 <div className="text-sm text-gray-500">Total: {reservations.length} reservas</div>
               </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
+            </div>            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ID
                     </th>
@@ -568,12 +714,11 @@ function AdminDashboard() {
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                    </th>                  </tr>
+                </thead><tbody className="bg-white divide-y divide-gray-200">
                   {reservations.length > 0 ? (
-                    reservations.map((reservation) => (                      <tr key={reservation.id}>{/* */}
+                    reservations.map((reservation) => (
+                      <tr key={reservation.id}>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           #{reservation.id}
                         </td>
@@ -582,21 +727,13 @@ function AdminDashboard() {
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {reservation.court?.name || reservation.courtName || 'Cancha no especificada'}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        </td>                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div>
                             <div className="font-medium">
-                              {new Date(reservation.date || reservation.startTime).toLocaleDateString('es-ES')}
+                              {formatReservationDate(reservation.startTime)}
                             </div>
                             <div className="text-xs text-gray-400">
-                              {new Date(reservation.startTime).toLocaleTimeString('es-ES', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })} - 
-                              {new Date(reservation.endTime).toLocaleTimeString('es-ES', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
+                              {formatReservationTimeRange(reservation.startTime, reservation.endTime)}
                             </div>
                           </div>
                         </td>
@@ -615,10 +752,16 @@ function AdminDashboard() {
                             {reservation.status === "confirmed" ? "Confirmada" :
                             reservation.status === "pending" ? "Pendiente" :
                             reservation.status === "cancelled" ? "Cancelada" :
-                            reservation.status === "completed" ? "Completada" : reservation.status}                          </span>
+                            reservation.status === "completed" ? "Completada" : reservation.status}
+                          </span>
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatChileanCurrency(reservation.totalPrice || reservation.total || 0)}
+                          {formatChileanCurrency(
+                            Number(reservation.amount) || 
+                            Number(reservation.totalPrice) || 
+                            Number(reservation.total) || 
+                            0
+                          )}
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-3">
@@ -660,15 +803,15 @@ function AdminDashboard() {
                           </div>
                         </td>
                       </tr>
-                    ))                  ) : (
-                    <tr>{/* */}
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                    ))
+                  ) : (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                         No hay reservas registradas.
                       </td>
                     </tr>
                   )}
-                </tbody>
-              </table>
+                </tbody></table>
             </div>
           </div>
         )}
@@ -688,10 +831,7 @@ function AdminDashboard() {
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
+            <div className="overflow-x-auto">              <table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Imagen
                     </th>
@@ -712,12 +852,11 @@ function AdminDashboard() {
                     </th>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                    </th>                  </tr>
+                </thead><tbody className="bg-white divide-y divide-gray-200">
                   {courts.length > 0 ? (
-                    courts.map((court) => (                      <tr key={court.id}>{/* */}
+                    courts.map((court) => (
+                      <tr key={court.id}>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           {court.image ? (
                             <img
@@ -772,17 +911,15 @@ function AdminDashboard() {
                             </button>
                             <button className="text-red-600 hover:text-red-900">Eliminar</button>
                           </div>
-                        </td>
-                      </tr>
-                    ))                  ) : (
-                    <tr>{/* */}
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                        No hay canchas registradas. Crea la primera cancha.
+                        </td>                      </tr>
+                    ))
+                  ) : (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-8 text-center text-gray-500">                        No hay canchas registradas. Crea la primera cancha.
                       </td>
                     </tr>
                   )}
-                </tbody>
-              </table>
+                </tbody></table>
             </div>
           </div>
         )}
@@ -802,10 +939,7 @@ function AdminDashboard() {
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
+            <div className="overflow-x-auto">              <table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr>
                     <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Producto
                     </th>
@@ -822,10 +956,9 @@ function AdminDashboard() {
                       Acciones
                     </th>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {products.length > 0 ? (
-                    products.map((product) => (                      <tr key={product.id}>{/* */}
+                </thead><tbody className="bg-white divide-y divide-gray-200">                  {products.length > 0 ? (
+                    products.map((product) => (
+                      <tr key={product.id}>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 flex-shrink-0">
@@ -872,18 +1005,17 @@ function AdminDashboard() {
                             >
                               Eliminar
                             </button>
-                          </div>
-                        </td>
+                          </div>                        </td>
                       </tr>
-                    ))                  ) : (
-                    <tr>{/* */}
-                      <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    ))
+                  ) : (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                         No hay productos registrados.
                       </td>
                     </tr>
                   )}
-                </tbody>
-              </table>
+                </tbody></table>
             </div>
           </div>
         )}
@@ -905,6 +1037,26 @@ function AdminDashboard() {
                   <p>No hay usuarios registrados</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}        {/* Virtual Wallet Management */}
+        {activeTab === "tarjeta" && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                <CreditCard className="w-5 h-5 mr-2" />
+                Mi Billetera Virtual
+              </h2>
+              <p className="text-gray-600 text-sm mt-1">
+                Gestiona tu saldo virtual para realizar reservas
+              </p>
+            </div>
+            <div className="p-4 sm:p-6">
+              <VirtualWallet 
+                balance={adminBalance}
+                onAddBalance={handleAddBalance}
+                isLoading={isUpdatingBalance}
+              />
             </div>
           </div>
         )}
@@ -962,8 +1114,7 @@ function AdminDashboard() {
       <ChangePasswordModal
         isOpen={isChangePasswordModalOpen}
         onClose={() => setIsChangePasswordModalOpen(false)}
-        onSubmit={handleChangePassword}
-      />
+        onSubmit={handleChangePassword}      />
 
       {/* Modal de Cancelación de Reserva */}
       {showCancelModal && cancellingReservation && (
@@ -982,7 +1133,7 @@ function AdminDashboard() {
                 <strong>Cancha:</strong> {cancellingReservation.court?.name || cancellingReservation.courtName || 'Cancha no especificada'}
               </p>
               <p className="text-sm text-gray-600">
-                <strong>Fecha:</strong> {new Date(cancellingReservation.date || cancellingReservation.startTime).toLocaleDateString('es-ES')}
+                <strong>Fecha:</strong> {formatReservationFullDate(cancellingReservation.startTime)}
               </p>
             </div>
 

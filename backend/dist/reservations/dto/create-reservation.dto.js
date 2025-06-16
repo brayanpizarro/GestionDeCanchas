@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateReservationDto = exports.PlayerDto = void 0;
+exports.CreateReservationDto = exports.SelectedEquipmentDto = exports.PlayerDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 class PlayerDto {
@@ -45,12 +45,49 @@ __decorate([
     (0, class_transformer_1.Type)(() => Number),
     __metadata("design:type", Number)
 ], PlayerDto.prototype, "age", void 0);
+class SelectedEquipmentDto {
+    id;
+    name;
+    price;
+    quantity;
+}
+exports.SelectedEquipmentDto = SelectedEquipmentDto;
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SelectedEquipmentDto.prototype, "id", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SelectedEquipmentDto.prototype, "name", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsPositive)(),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], SelectedEquipmentDto.prototype, "price", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.IsPositive)(),
+    (0, class_transformer_1.Type)(() => Number),
+    __metadata("design:type", Number)
+], SelectedEquipmentDto.prototype, "quantity", void 0);
 class CreateReservationDto {
     courtId;
     userId;
     startTime;
     endTime;
     players;
+    equipment;
 }
 exports.CreateReservationDto = CreateReservationDto;
 __decorate([
@@ -90,4 +127,12 @@ __decorate([
     (0, class_transformer_1.Type)(() => PlayerDto),
     __metadata("design:type", Array)
 ], CreateReservationDto.prototype, "players", void 0);
+__decorate([
+    (0, class_transformer_1.Expose)(),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsArray)(),
+    (0, class_validator_1.ValidateNested)({ each: true }),
+    (0, class_transformer_1.Type)(() => SelectedEquipmentDto),
+    __metadata("design:type", Array)
+], CreateReservationDto.prototype, "equipment", void 0);
 //# sourceMappingURL=create-reservation.dto.js.map

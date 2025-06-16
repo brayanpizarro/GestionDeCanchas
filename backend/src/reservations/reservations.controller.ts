@@ -27,6 +27,16 @@ export class ReservationsController {
         return this.reservationsService.findAll();
     }
 
+    @Get('all')
+    async findAllReservations() {
+        // Este endpoint devuelve TODAS las reservas sin filtros de usuario
+        // Solo para administradores
+        console.log('🔍 Admin solicitando TODAS las reservas...');
+        const allReservations = await this.reservationsService.findAll();
+        console.log(`📊 Total de reservas encontradas: ${allReservations.length}`);
+        return allReservations;
+    }
+
     @Get('stats')
     async getStats() {
         const [reservations, totalReservations] = await Promise.all([
@@ -69,11 +79,11 @@ export class ReservationsController {
     /**
      * Obtiene horarios disponibles para una cancha específica en una fecha
      */
-    @Get('courts/:courtId/available-slots')
+    @Get('available/:courtId')
     async getAvailableTimeSlots(
         @Param('courtId') courtId: number,
         @Query('date') date: string
-    ) {
+    ): Promise<any> {
         if (!date) {
             throw new BadRequestException('Date parameter is required');
         }
@@ -130,5 +140,24 @@ export class ReservationsController {
         @Body('status') status: 'pending' | 'confirmed' | 'completed' | 'cancelled',
     ) {
         return this.reservationsService.updateStatus(id, status);
+    }
+
+    @Get('court-stats')
+    async getCourtStats() {
+        try {
+            console.log('🎯 Court stats endpoint called');
+            const stats = await this.reservationsService.getDetailedReservationStats();
+            console.log('📊 Returning stats:', stats);
+            return stats;
+        } catch (error) {
+            console.error('❌ Error in court-stats endpoint:', error);
+            throw new BadRequestException(`Failed to get court statistics: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    @Get('test')
+    async testEndpoint() {
+        console.log('🧪 Test endpoint called');
+        return { status: 'ok', message: 'Reservations controller is working', timestamp: new Date().toISOString() };
     }
 }

@@ -23,9 +23,11 @@ export interface Court {
 
 export interface ReservationStats {
   court: string
-  courtId: string
+  courtId?: number
   reservations: number
-  revenue: number
+  cancelled?: number
+  completed?: number
+  revenue?: number
 }
 
 export interface Product {

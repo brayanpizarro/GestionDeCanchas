@@ -98,13 +98,18 @@ const ReservationPage: React.FC = () => {
     }, [])
 
     // Load time slots when date or court changes
-    useEffect(() => {
-        const loadTimeSlots = async () => {
+    useEffect(() => {        const loadTimeSlots = async () => {
             if (!selectedDate || courts.length === 0) return
 
             try {
                 setIsLoading(true)
-                const formattedDate = selectedDate.toISOString().split("T")[0]
+                
+                const formattedDate = selectedDate.getFullYear() + '-' + 
+                    String(selectedDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                    String(selectedDate.getDate()).padStart(2, '0')
+                
+                console.log('🔍 DEBUG Frontend - Fecha seleccionada:', selectedDate);
+                console.log('🔍 DEBUG Frontend - Fecha formateada enviada:', formattedDate);
                 
                 const courtToUse = selectedCourt ? courts.find((court) => court.id === selectedCourt) : courts[0]
                 
@@ -123,7 +128,7 @@ const ReservationPage: React.FC = () => {
 
         loadTimeSlots()
     }, [selectedDate, selectedCourt, courts, selectedDuration])    // Handlers
-    const handleTimeSlotSelect = (time: string, duration: number, timeSlot: TimeSlot) => {
+    const handleTimeSlotSelect = (time: string, _duration: number, timeSlot: TimeSlot) => {
         setSelectedTimeSlot(timeSlot)
         setSelectedTime(time)
         // Scroll automático a la sección de equipamiento
@@ -226,33 +231,35 @@ const ReservationPage: React.FC = () => {
         if (players.length === 0) {
             toast.error("Debe agregar al menos un jugador")
             return
-        }
-
-        try {
+        }        try {
             setIsLoading(true)
             
-            const startTime = selectedTimeSlot.startTime instanceof Date 
-                ? selectedTimeSlot.startTime 
-                : new Date(selectedTimeSlot.startTime)
-            const endTime = selectedTimeSlot.endTime instanceof Date 
-                ? selectedTimeSlot.endTime 
-                : new Date(selectedTimeSlot.endTime)
-
-            if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-                throw new Error("Fechas inválidas seleccionadas")
+            // Enviar las fechas tal como vienen del backend
+            let startTimeString: string;
+            let endTimeString: string;
+            
+            if (typeof selectedTimeSlot.startTime === 'string') {
+                startTimeString = selectedTimeSlot.startTime;
+            } else {
+                startTimeString = selectedTimeSlot.startTime.toISOString();
             }
-
-            const reservationData: CreateReservationDto = {
+            
+            if (typeof selectedTimeSlot.endTime === 'string') {
+                endTimeString = selectedTimeSlot.endTime;
+            } else {
+                endTimeString = selectedTimeSlot.endTime.toISOString();
+            }            const reservationData: CreateReservationDto = {
                 courtId: Number(selectedCourt),
                 userId: Number(user.id),
-                startTime: startTime.toISOString(),
-                endTime: endTime.toISOString(),
+                startTime: startTimeString,
+                endTime: endTimeString,
                 players: players.map((p) => ({
                     firstName: p.firstName.trim(),
                     lastName: p.lastName.trim(),
                     rut: p.rut.trim(),
                     age: Number(p.age),
                 })),
+                equipment: selectedEquipment,
             }
 
             toast.loading('Creando reserva...')
@@ -265,8 +272,7 @@ const ReservationPage: React.FC = () => {
                 : Math.floor(Math.random() * 1000) + 1
 
             setCreatedReservationId(reservationId)
-            setShowPaymentModal(true)
-              } catch (error) {
+            setShowPaymentModal(true)              } catch (error) {
             toast.dismiss()
             let errorMessage = "Error desconocido"
             
@@ -274,11 +280,20 @@ const ReservationPage: React.FC = () => {
                 errorMessage = error.message
                 
                 // Detectar errores específicos de horarios ocupados
-                if (errorMessage.includes('superpone') || errorMessage.includes('already reserved') || errorMessage.includes('ocupado')) {
+                if (errorMessage.includes('HORARIO NO DISPONIBLE') || 
+                    errorMessage.includes('superpone') || 
+                    errorMessage.includes('already reserved') || 
+                    errorMessage.includes('ocupado')) {
+                    
                     toast.error(
-                        "⚠️ ¡HORARIO NO DISPONIBLE! Este horario fue reservado por otra persona. " +
-                        "Por favor, recarga la página y selecciona otro horario disponible.",
-                        { duration: 8000 }
+                        `⚠️ ${errorMessage}`,
+                        { 
+                            duration: 10000,
+                            style: {
+                                maxWidth: '500px',
+                                fontSize: '14px'
+                            }
+                        }
                     )
                     // Recargar los horarios disponibles
                     window.location.reload()

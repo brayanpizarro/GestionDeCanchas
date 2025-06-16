@@ -15,7 +15,7 @@ const Equipment: React.FC = () => {
       
       <div className="relative container mx-auto px-4 z-10">
         <div className="text-center max-w-xs sm:max-w-md md:max-w-2xl mx-auto mb-6 md:mb-10">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 md:mb-6 font-serif italic leading-tight px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 md:mb-6 font-sans leading-tight px-2">
             Si no tienes equipamiento, no te preocupes. ¡Nos puedes pedir!
           </h2>
           

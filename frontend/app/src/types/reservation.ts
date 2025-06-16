@@ -49,6 +49,7 @@ export interface CreateReservationDto {
     startTime: string
     endTime: string
     players: Player[]
+    equipment?: SelectedEquipment[]
 }
 
 export interface ReservationSummary {

@@ -299,4 +299,50 @@ export class ProductsService {
       throw new InternalServerErrorException('Failed to retrieve recent movements');
     }
   }
+
+  async reduceStock(productId: number, quantity: number): Promise<Product> {
+    try {
+      const product = await this.findOne(productId);
+      
+      if (product.stock < quantity) {
+        throw new BadRequestException(
+          `Stock insuficiente para ${product.name}. Stock disponible: ${product.stock}, solicitado: ${quantity}`
+        );
+      }
+
+      product.stock -= quantity;
+      product.sold = (product.sold || 0) + quantity;
+      
+      const updatedProduct = await this.productsRepository.save(product);
+      this.logger.log(`Stock reducido para ${product.name}: ${product.stock + quantity} -> ${product.stock}`);
+      
+      return updatedProduct;
+    } catch (error: unknown) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`Error reducing stock for product ${productId}:`, error);
+      throw new InternalServerErrorException('Failed to reduce product stock');
+    }
+  }
+
+  async restoreStock(productId: number, quantity: number): Promise<Product> {
+    try {
+      const product = await this.findOne(productId);
+      
+      product.stock += quantity;
+      product.sold = Math.max((product.sold || 0) - quantity, 0);
+      
+      const updatedProduct = await this.productsRepository.save(product);
+      this.logger.log(`Stock restaurado para ${product.name}: ${product.stock - quantity} -> ${product.stock}`);
+      
+      return updatedProduct;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Error restoring stock for product ${productId}:`, error);
+      throw new InternalServerErrorException('Failed to restore product stock');
+    }
+  }
 }
