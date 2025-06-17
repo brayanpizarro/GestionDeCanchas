@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { formatChileanCurrency } from '../utils/currency'
 import { UserService } from '../service/userService'
 import { reservationService } from '../service/reservationService'
-import { CreditCard, Wallet, CheckCircle, AlertCircle } from 'lucide-react'
+import { Wallet, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface PaymentModalProps {
   isOpen: boolean
@@ -118,8 +118,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               {/* Tarjeta Virtual */}
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm opacity-90">Tarjeta Virtual</span>
-                  <CreditCard className="h-5 w-5" />
+                  <span className="text-sm opacity-90">Tarjeta Virtual</span>                  <Wallet className="h-5 w-5" />
                 </div>
                 <div className="text-2xl font-bold">
                   {formatChileanCurrency(userBalance)}

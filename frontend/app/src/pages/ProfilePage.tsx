@@ -525,20 +525,7 @@ const ProfilePage: React.FC = () => {
                                                 </button>
                                             </div>
                                         </div>                                        
-                                        {/* Cards */}
-                                        <div className="space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <h3 className="text-lg font-medium">Tarjetas guardadas</h3>
-                                                <button
-                                                    onClick={() => setShowAddCard(true)}
-                                                    className="text-[#071d40] hover:text-[#122e5e] transition flex items-center"
-                                                >
-                                                    <Plus className="h-5 w-5 mr-1" />
-                                                    Agregar tarjeta
-                                                </button>
-                                            </div>                                            {/* Funcionalidad de tarjetas temporalmente deshabilitada */}
-                                            <p className="text-gray-500 text-center py-4">No tienes tarjetas guardadas</p>
-                                        </div>
+
 
                                         {/* Add Card Modal */}
                                         {showAddCard && (
@@ -628,24 +615,6 @@ const ProfilePage: React.FC = () => {
                                                                 required
                                                             />                                                        </div>
                                                         {/* Funcionalidad de tarjetas temporalmente deshabilitada */}
-                                                        <div>
-                                                            <p className="text-sm text-gray-500">Las tarjetas guardadas están temporalmente deshabilitadas</p>
-                                                        </div>
-                                                        <div className="flex justify-end space-x-3 mt-6">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setShowTopUp(false)}
-                                                                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition"
-                                                            >
-                                                                Cancelar
-                                                            </button>                                                            <button
-                                                                type="submit"
-                                                                disabled={loading}
-                                                                className="bg-[#071d40] text-white px-4 py-2 rounded-md hover:bg-[#122e5e] transition disabled:opacity-50"
-                                                            >
-                                                                {loading ? 'Recargando...' : 'Recargar'}
-                                                            </button>
-                                                        </div>
                                                     </form>
                                                 </div>
                                             </div>

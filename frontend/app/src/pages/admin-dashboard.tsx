@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { Users, BarChart3, Package, Plus, ChevronDown, Building2, Loader2, Calendar, Home, CreditCard } from "lucide-react"
+import { Users, BarChart3, Package, Plus, ChevronDown, Building2, Loader2, Calendar, Home, Wallet } from "lucide-react"
 import StatCard from "../components/admin/StatCard"
 import ChangePasswordModal from "../components/admin/ChangePasswordModal"
 import UsersTable from "../components/admin/UsersTable"
@@ -47,8 +47,7 @@ function AdminDashboard() {
   
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false)
-  const [currentUser, setCurrentUser] = useState<{ id: number; name: string; email: string } | null>(null)
-  // UI States
+  const [currentUser, setCurrentUser] = useState<{ id: number; name: string; email: string } | null>(null)  // UI States
   const [isCreateCourtModalOpen, setIsCreateCourtModalOpen] = useState(false)
   const [isCreateProductModalOpen, setIsCreateProductModalOpen] = useState(false)
   const [isEditCourtModalOpen, setIsEditCourtModalOpen] = useState(false)
@@ -58,6 +57,13 @@ function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const sidebarItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: <BarChart3 className="w-5 h-5" /> },
+    { id: 'courts', label: 'Canchas', icon: <Building2 className="w-5 h-5" /> },
+    { id: 'users', label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
+    { id: 'products', label: 'Productos', icon: <Package className="w-5 h-5" /> },
+    { id: 'billetera', label: 'Billetera', icon: <Wallet className="w-5 h-5" /> }
+  ]
   
   // Estados para cancelación de reservas por admin
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -519,13 +525,11 @@ function AdminDashboard() {
       {/* Navigation */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-4 sm:space-x-8 items-center overflow-x-auto">            {[
-              { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+          <nav className="flex space-x-4 sm:space-x-8 items-center overflow-x-auto">            {[              { id: "dashboard", label: "Dashboard", icon: BarChart3 },
               { id: "reservas", label: "Reservas", icon: Calendar },
               { id: "productos", label: "Productos", icon: Package },
               { id: "canchas", label: "Canchas", icon: Building2 },
               { id: "usuarios", label: "Usuarios", icon: Users },
-              { id: "tarjeta", label: "Mi Billetera", icon: CreditCard },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1060,11 +1064,11 @@ function AdminDashboard() {
             </div>
           </div>
         )}        {/* Virtual Wallet Management */}
-        {activeTab === "tarjeta" && (
+        {activeTab === "billetera" && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-4 sm:p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                <CreditCard className="w-5 h-5 mr-2" />
+                <Wallet className="w-5 h-5 mr-2" />
                 Mi Billetera Virtual
               </h2>
               <p className="text-gray-600 text-sm mt-1">
