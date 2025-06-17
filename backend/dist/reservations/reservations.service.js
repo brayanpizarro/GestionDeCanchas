@@ -314,6 +314,35 @@ let ReservationsService = class ReservationsService {
         }
         return updatedReservation;
     }
+    async cancelReservation(id) {
+        const reservation = await this.reservationsRepository.findOne({
+            where: { id },
+            relations: ['court', 'user']
+        });
+        if (!reservation) {
+            throw new common_1.NotFoundException(`Reservation with ID ${id} not found`);
+        }
+        if (reservation.status === 'cancelled') {
+            throw new common_1.BadRequestException('Reservation is already cancelled');
+        }
+        reservation.status = 'cancelled';
+        const updatedReservation = await this.reservationsRepository.save(reservation);
+        try {
+            if (reservation.user && reservation.user.email) {
+                await this.emailService.sendReservationCancellation(reservation.user.email, reservation.user.name, {
+                    id: reservation.id,
+                    courtName: reservation.court.name,
+                    date: reservation.startTime.toISOString().split('T')[0],
+                    startTime: reservation.startTime.toISOString(),
+                    endTime: reservation.endTime.toISOString()
+                });
+            }
+        }
+        catch (error) {
+            console.error('Error sending cancellation email:', error);
+        }
+        return updatedReservation;
+    }
     async getAvailableTimeSlots(courtId, date) {
         const [year, month, day] = date.split('-').map(Number);
         const baseDate = new Date(year, month - 1, day);

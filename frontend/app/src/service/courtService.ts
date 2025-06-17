@@ -128,6 +128,24 @@ export class CourtService {
     if (!response.ok) throw new Error("Error fetching court usage stats")
     return response.json()
   }
+  static async deleteCourt(courtId: number): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/courts/${courtId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.message || 'Error al eliminar la cancha';
+        console.error('Error response:', errorData);
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Error in deleteCourt:', error);
+      throw error instanceof Error ? error : new Error('Error al eliminar la cancha');
+    }
+  }
 }
 
 export const courtService = {
@@ -137,4 +155,5 @@ export const courtService = {
   updateCourt: CourtService.updateCourt,
   updateCourtStatus: CourtService.updateCourtStatus,
   getCourtUsage: CourtService.getCourtUsage,
+  deleteCourt: CourtService.deleteCourt,
 }

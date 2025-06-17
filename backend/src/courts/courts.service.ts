@@ -54,11 +54,25 @@ export class CourtsService {
         const court = await this.findOne(id);
         this.courtsRepository.merge(court, updateCourtDto);
         return await this.courtsRepository.save(court);
-    }
-
-    async remove(id: number): Promise<void> {
+    }    async remove(id: number): Promise<void> {
         const court = await this.findOne(id);
-        await this.courtsRepository.remove(court);
+        
+        // Primero verificamos si hay reservaciones asociadas
+        const reservations = await this.reservationsRepository.find({
+            where: { court: { id: court.id } }
+        });
+
+        if (reservations.length > 0) {
+            throw new Error('No se puede eliminar la cancha porque tiene reservaciones asociadas');
+        }
+
+        // Si no hay reservaciones, procedemos a eliminar la cancha
+        try {
+            await this.courtsRepository.remove(court);
+        } catch (error) {
+            console.error('Error al eliminar la cancha:', error);
+            throw new Error('Error al eliminar la cancha');
+        }
     }
 
     async getReservationsForDate(date: Date): Promise<Reservation[]> {

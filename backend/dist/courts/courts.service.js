@@ -62,7 +62,19 @@ let CourtsService = class CourtsService {
     }
     async remove(id) {
         const court = await this.findOne(id);
-        await this.courtsRepository.remove(court);
+        const reservations = await this.reservationsRepository.find({
+            where: { court: { id: court.id } }
+        });
+        if (reservations.length > 0) {
+            throw new Error('No se puede eliminar la cancha porque tiene reservaciones asociadas');
+        }
+        try {
+            await this.courtsRepository.remove(court);
+        }
+        catch (error) {
+            console.error('Error al eliminar la cancha:', error);
+            throw new Error('Error al eliminar la cancha');
+        }
     }
     async getReservationsForDate(date) {
         const startOfDay = new Date(date);

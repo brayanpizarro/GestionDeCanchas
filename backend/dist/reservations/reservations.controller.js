@@ -106,6 +106,19 @@ let ReservationsController = class ReservationsController {
     updateStatus(id, status) {
         return this.reservationsService.updateStatus(id, status);
     }
+    async cancelReservation(id) {
+        try {
+            const result = await this.reservationsService.cancelReservation(+id);
+            return {
+                message: 'Reservation cancelled successfully',
+                reservation: result
+            };
+        }
+        catch (error) {
+            console.error('Error cancelling reservation:', error);
+            throw error;
+        }
+    }
     async getCourtStats() {
         try {
             console.log('🎯 Court stats endpoint called');
@@ -197,6 +210,13 @@ __decorate([
     __metadata("design:paramtypes", [Number, String]),
     __metadata("design:returntype", void 0)
 ], ReservationsController.prototype, "updateStatus", null);
+__decorate([
+    (0, common_1.Put)(':id/cancel'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ReservationsController.prototype, "cancelReservation", null);
 __decorate([
     (0, common_1.Get)('court-stats'),
     __metadata("design:type", Function),
