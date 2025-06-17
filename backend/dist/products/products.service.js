@@ -67,7 +67,10 @@ let ProductsService = ProductsService_1 = class ProductsService {
     }
     async create(createProductDto) {
         try {
-            this.logger.log('Creating product with data:', createProductDto);
+            this.logger.log('Creating product with data:', {
+                ...createProductDto,
+                hasImagePath: !!createProductDto.imagePath
+            });
             if (!createProductDto.name) {
                 throw new common_1.BadRequestException('Name is required');
             }
@@ -80,9 +83,23 @@ let ProductsService = ProductsService_1 = class ProductsService {
                 available: createProductDto.available ?? true,
                 previousStock: createProductDto.stock
             });
+            this.logger.log('Product entity before save:', {
+                id: product.id,
+                name: product.name,
+                imagePath: product.imagePath,
+                hasImagePath: !!product.imagePath
+            });
             const savedProduct = await this.productsRepository.save(product);
-            this.logger.log('Product created successfully:', savedProduct.id);
-            return savedProduct;
+            this.logger.log('Product saved successfully:', {
+                id: savedProduct.id,
+                name: savedProduct.name,
+                imagePath: savedProduct.imagePath,
+                hasImagePath: !!savedProduct.imagePath
+            });
+            return {
+                ...savedProduct,
+                imageUrl: savedProduct.imagePath ? this.normalizeImagePath(savedProduct.imagePath) : undefined
+            };
         }
         catch (error) {
             if (error instanceof common_1.BadRequestException) {
@@ -99,7 +116,11 @@ let ProductsService = ProductsService_1 = class ProductsService {
                 product.previousStock = product.stock;
             }
             this.productsRepository.merge(product, updateProductDto);
-            return await this.productsRepository.save(product);
+            const updatedProduct = await this.productsRepository.save(product);
+            return {
+                ...updatedProduct,
+                imageUrl: updatedProduct.imagePath ? this.normalizeImagePath(updatedProduct.imagePath) : undefined
+            };
         }
         catch (error) {
             if (error instanceof common_1.NotFoundException) {

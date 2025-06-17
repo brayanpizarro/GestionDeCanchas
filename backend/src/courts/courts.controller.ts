@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseInterceptors, UploadedFile, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseInterceptors, UploadedFile, Patch, Logger } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from '../config/multer.config';
 import { CourtsService } from './courts.service';
@@ -7,13 +7,25 @@ import { UpdateCourtDto } from './dto/update-court.dto';
 
 @Controller('courts')
 export class CourtsController {
+    private readonly logger = new Logger(CourtsController.name);
+    
     constructor(private readonly courtsService: CourtsService) {}
 
     @Post()
     @UseInterceptors(FileInterceptor('image', multerConfig))
     create(@Body() createCourtDto: CreateCourtDto, @UploadedFile() file: Express.Multer.File) {
+        this.logger.log('Received create court request:', {
+            dto: createCourtDto,
+            hasFile: !!file,
+            fileName: file?.originalname,
+            filePath: file?.path,
+        });
+
         if (file) {
             createCourtDto['imagePath'] = file.path.replace(/\\/g, '/');
+            this.logger.log('Added image path to court data:', createCourtDto['imagePath']);
+        } else {
+            this.logger.warn('No image file received for court creation');
         }
         return this.courtsService.create(createCourtDto);
     }

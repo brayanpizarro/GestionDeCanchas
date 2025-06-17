@@ -12,8 +12,8 @@ export class CourtService {
         const error = await response.text()
         console.error("Error response:", error)
         throw new Error("Error fetching courts")
-      }
-      const courtsData = await response.json()
+      }      const courtsData = await response.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return courtsData.map((court: any) => ({
         id: court.id,
         name: court.name,
@@ -38,12 +38,20 @@ export class CourtService {
       if (!response.ok) {
         throw new Error("Error fetching courts")
       }      const courtsData = await response.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      console.log('🏟️ Raw courts data from API:', courtsData.map((court: any) => ({
+        id: court.id,
+        name: court.name,
+        imageUrl: court.imageUrl,
+        imagePath: court.imagePath      })));
+      
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return courtsData.map((court: any) => ({
         id: court.id,
         name: court.name,
         description: court.description || "",
         price: Number.parseFloat(court.pricePerHour || court.price),
-        imageUrl: court.imagePath || court.imageUrl,
+        imageUrl: court.imageUrl || court.imagePath, // Priorizar imageUrl normalizada del backend
         imagePath: court.imagePath,
         available: court.status === "available",
         maxPlayers: court.capacity || court.maxPlayers,

@@ -49,6 +49,8 @@ export class ProductsController {
             this.logger.log('Received create product request:', {
                 dto: createProductDto,
                 hasFile: !!file,
+                fileName: file?.originalname,
+                filePath: file?.path,
                 name: createProductDto.name,
                 category: createProductDto.category,
                 price: createProductDto.price,
@@ -60,11 +62,14 @@ export class ProductsController {
             
             if (file) {
                 productData.imagePath = file.path.replace(/\\/g, '/');
-                this.logger.log('Added image path:', productData.imagePath);
+                this.logger.log('Added image path to product data:', productData.imagePath);
+            } else {
+                this.logger.warn('No image file received for product creation');
             }
 
             const result = await this.productsService.create(productData);
-            this.logger.log('Product created successfully:', result.id);
+            this.logger.log('Product created successfully with ID:', result.id);
+            this.logger.log('Product imagePath in result:', result.imagePath);
             return result;
         } catch (error) {
             this.logger.error('Error in create controller:', error);

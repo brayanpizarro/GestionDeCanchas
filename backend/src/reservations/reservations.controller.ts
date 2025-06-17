@@ -31,9 +31,9 @@ export class ReservationsController {
     async findAllReservations() {
         // Este endpoint devuelve TODAS las reservas sin filtros de usuario
         // Solo para administradores
-        console.log('🔍 Admin solicitando TODAS las reservas...');
+        console.log('Admin solicitando TODAS las reservas...');
         const allReservations = await this.reservationsService.findAll();
-        console.log(`📊 Total de reservas encontradas: ${allReservations.length}`);
+        console.log(`Total de reservas encontradas: ${allReservations.length}`);
         return allReservations;
     }
 
@@ -143,21 +143,16 @@ export class ReservationsController {
     }
 
     @Get('court-stats')
-    async getCourtStats() {
+    async getCourtStats(): Promise<any> {
         try {
-            console.log('🎯 Court stats endpoint called');
+            console.log('Court stats endpoint called');
             const stats = await this.reservationsService.getDetailedReservationStats();
-            console.log('📊 Returning stats:', stats);
+            console.log(' Returning stats:', stats);
             return stats;
         } catch (error) {
-            console.error('❌ Error in court-stats endpoint:', error);
+            console.error('Error in court-stats endpoint:', error);
             throw new BadRequestException(`Failed to get court statistics: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 
-    @Get('test')
-    async testEndpoint() {
-        console.log('🧪 Test endpoint called');
-        return { status: 'ok', message: 'Reservations controller is working', timestamp: new Date().toISOString() };
-    }
 }

@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var CourtsService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CourtsService = void 0;
 const common_1 = require("@nestjs/common");
@@ -18,23 +19,51 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const court_entity_1 = require("./entities/court.entity");
 const reservation_entity_1 = require("../reservations/entities/reservation.entity");
-let CourtsService = class CourtsService {
+let CourtsService = CourtsService_1 = class CourtsService {
     courtsRepository;
     reservationsRepository;
+    logger = new common_1.Logger(CourtsService_1.name);
     constructor(courtsRepository, reservationsRepository) {
         this.courtsRepository = courtsRepository;
         this.reservationsRepository = reservationsRepository;
     }
+    normalizeImagePath(imagePath) {
+        if (!imagePath)
+            return '';
+        let cleanPath = imagePath.replace(/^\/+uploads\/+/g, '');
+        cleanPath = cleanPath.replace(/^uploads\/+/g, '');
+        const finalPath = `/uploads/${cleanPath}`;
+        this.logger.debug(`Normalized image path: ${imagePath} -> ${finalPath}`);
+        return finalPath;
+    }
     async create(createCourtDto) {
+        this.logger.log('Creating court with data:', {
+            ...createCourtDto,
+            hasImagePath: !!createCourtDto.imagePath
+        });
         const court = this.courtsRepository.create({
             ...createCourtDto,
             rating: 4.5,
             isCovered: createCourtDto.isCovered ?? (createCourtDto.type === 'covered'),
         });
-        return await this.courtsRepository.save(court);
+        const savedCourt = await this.courtsRepository.save(court);
+        this.logger.log('Court saved successfully:', {
+            id: savedCourt.id,
+            name: savedCourt.name,
+            imagePath: savedCourt.imagePath,
+            hasImagePath: !!savedCourt.imagePath
+        });
+        const result = savedCourt;
+        result.imageUrl = savedCourt.imagePath ? this.normalizeImagePath(savedCourt.imagePath) : undefined;
+        return result;
     }
     async findAll() {
-        return await this.courtsRepository.find();
+        const courts = await this.courtsRepository.find();
+        return courts.map(court => {
+            const result = court;
+            result.imageUrl = court.imagePath ? this.normalizeImagePath(court.imagePath) : undefined;
+            return result;
+        });
     }
     async getRecentReservations() {
         return this.reservationsRepository.find({
@@ -48,7 +77,9 @@ let CourtsService = class CourtsService {
         if (!court) {
             throw new common_1.NotFoundException(`Court with ID ${id} not found`);
         }
-        return court;
+        const result = court;
+        result.imageUrl = court.imagePath ? this.normalizeImagePath(court.imagePath) : undefined;
+        return result;
     }
     async updateStatus(id, status) {
         const court = await this.findOne(id);
@@ -58,7 +89,10 @@ let CourtsService = class CourtsService {
     async update(id, updateCourtDto) {
         const court = await this.findOne(id);
         this.courtsRepository.merge(court, updateCourtDto);
-        return await this.courtsRepository.save(court);
+        const savedCourt = await this.courtsRepository.save(court);
+        const result = savedCourt;
+        result.imageUrl = savedCourt.imagePath ? this.normalizeImagePath(savedCourt.imagePath) : undefined;
+        return result;
     }
     async remove(id) {
         const court = await this.findOne(id);
@@ -137,7 +171,7 @@ let CourtsService = class CourtsService {
     }
 };
 exports.CourtsService = CourtsService;
-exports.CourtsService = CourtsService = __decorate([
+exports.CourtsService = CourtsService = CourtsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(court_entity_1.Court)),
     __param(1, (0, typeorm_1.InjectRepository)(reservation_entity_1.Reservation)),

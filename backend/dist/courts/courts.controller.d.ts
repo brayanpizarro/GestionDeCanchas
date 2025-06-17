@@ -3,6 +3,7 @@ import { CreateCourtDto } from './dto/create-court.dto';
 import { UpdateCourtDto } from './dto/update-court.dto';
 export declare class CourtsController {
     private readonly courtsService;
+    private readonly logger;
     constructor(courtsService: CourtsService);
     create(createCourtDto: CreateCourtDto, file: Express.Multer.File): Promise<import("./entities/court.entity").Court>;
     findAll(): Promise<import("./entities/court.entity").Court[]>;

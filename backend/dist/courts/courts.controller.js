@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var CourtsController_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CourtsController = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,14 +20,25 @@ const multer_config_1 = require("../config/multer.config");
 const courts_service_1 = require("./courts.service");
 const create_court_dto_1 = require("./dto/create-court.dto");
 const update_court_dto_1 = require("./dto/update-court.dto");
-let CourtsController = class CourtsController {
+let CourtsController = CourtsController_1 = class CourtsController {
     courtsService;
+    logger = new common_1.Logger(CourtsController_1.name);
     constructor(courtsService) {
         this.courtsService = courtsService;
     }
     create(createCourtDto, file) {
+        this.logger.log('Received create court request:', {
+            dto: createCourtDto,
+            hasFile: !!file,
+            fileName: file?.originalname,
+            filePath: file?.path,
+        });
         if (file) {
             createCourtDto['imagePath'] = file.path.replace(/\\/g, '/');
+            this.logger.log('Added image path to court data:', createCourtDto['imagePath']);
+        }
+        else {
+            this.logger.warn('No image file received for court creation');
         }
         return this.courtsService.create(createCourtDto);
     }
@@ -106,7 +118,7 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], CourtsController.prototype, "getCourtUsage", null);
-exports.CourtsController = CourtsController = __decorate([
+exports.CourtsController = CourtsController = CourtsController_1 = __decorate([
     (0, common_1.Controller)('courts'),
     __metadata("design:paramtypes", [courts_service_1.CourtsService])
 ], CourtsController);

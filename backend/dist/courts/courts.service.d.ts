@@ -6,7 +6,9 @@ import { UpdateCourtDto } from './dto/update-court.dto';
 export declare class CourtsService {
     private courtsRepository;
     private reservationsRepository;
+    private readonly logger;
     constructor(courtsRepository: Repository<Court>, reservationsRepository: Repository<Reservation>);
+    private normalizeImagePath;
     create(createCourtDto: CreateCourtDto): Promise<Court>;
     findAll(): Promise<Court[]>;
     getRecentReservations(): Promise<Reservation[]>;

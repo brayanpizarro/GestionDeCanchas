@@ -39,18 +39,18 @@ export class ReservationService {
         headers: getAuthHeaders(),
       })
       
-      console.log('📡 Response status:', response.status);
+      console.log(' Response status:', response.status);
       
       if (!response.ok) {
         throw new Error(`Error fetching detailed court stats: ${response.status} ${response.statusText}`)
       }
       
       const data = await response.json();
-      console.log('📊 Received court stats:', data);
+      console.log(' Received court stats:', data);
       
       return data;
     } catch (error) {
-      console.error('❌ Error in getDetailedCourtStats:', error);
+      console.error(' Error in getDetailedCourtStats:', error);
       throw error;
     }
   }

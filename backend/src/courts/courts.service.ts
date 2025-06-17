@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Court } from './entities/court.entity';
@@ -7,7 +7,9 @@ import { CreateCourtDto } from './dto/create-court.dto';
 import { UpdateCourtDto } from './dto/update-court.dto';
 
 @Injectable()
-export class CourtsService {  
+export class CourtsService {
+    private readonly logger = new Logger(CourtsService.name);
+    
     constructor(
         @InjectRepository(Court)
         private courtsRepository: Repository<Court>,
@@ -15,17 +17,61 @@ export class CourtsService {
         private reservationsRepository: Repository<Reservation>
     ) {}
 
+    /**
+     * Normaliza la ruta de imagen para evitar duplicaciones y caracteres problemáticos
+     */
+    private normalizeImagePath(imagePath: string): string {
+        if (!imagePath) return '';
+        
+        // Remover cualquier prefijo /uploads/ al inicio
+        let cleanPath = imagePath.replace(/^\/+uploads\/+/g, '');
+        
+        // Si la ruta comienza con uploads/ (sin barra inicial), también removerlo
+        cleanPath = cleanPath.replace(/^uploads\/+/g, '');
+        
+        // Construir la ruta final
+        const finalPath = `/uploads/${cleanPath}`;
+        
+        this.logger.debug(`Normalized image path: ${imagePath} -> ${finalPath}`);
+        return finalPath;
+    }
+
     async create(createCourtDto: CreateCourtDto): Promise<Court> {
+        this.logger.log('Creating court with data:', {
+            ...createCourtDto,
+            hasImagePath: !!createCourtDto.imagePath
+        });
+
         const court = this.courtsRepository.create({
             ...createCourtDto,
             rating: 4.5, // Valor por defecto
             isCovered: createCourtDto.isCovered ?? (createCourtDto.type === 'covered'), // Auto-derivar del tipo si no se especifica
         });
-        return await this.courtsRepository.save(court);
+        
+        const savedCourt = await this.courtsRepository.save(court);
+        
+        this.logger.log('Court saved successfully:', {
+            id: savedCourt.id,
+            name: savedCourt.name,
+            imagePath: savedCourt.imagePath,
+            hasImagePath: !!savedCourt.imagePath
+        });
+        
+        // Return court with normalized imageUrl for frontend compatibility
+        const result = savedCourt as Court & { imageUrl?: string };
+        result.imageUrl = savedCourt.imagePath ? this.normalizeImagePath(savedCourt.imagePath) : undefined;
+        return result;
     }
 
     async findAll(): Promise<Court[]> {
-        return await this.courtsRepository.find();
+        const courts = await this.courtsRepository.find();
+        
+        // Add imageUrl property for frontend compatibility
+        return courts.map(court => {
+            const result = court as Court & { imageUrl?: string };
+            result.imageUrl = court.imagePath ? this.normalizeImagePath(court.imagePath) : undefined;
+            return result;
+        });
     }
 
     async getRecentReservations(): Promise<Reservation[]> {
@@ -41,7 +87,11 @@ export class CourtsService {
         if (!court) {
             throw new NotFoundException(`Court with ID ${id} not found`);
         }
-        return court;
+        
+        // Add imageUrl property for frontend compatibility
+        const result = court as Court & { imageUrl?: string };
+        result.imageUrl = court.imagePath ? this.normalizeImagePath(court.imagePath) : undefined;
+        return result;
     }
 
     async updateStatus(id: number, status: string): Promise<Court> {
@@ -53,7 +103,12 @@ export class CourtsService {
     async update(id: number, updateCourtDto: UpdateCourtDto): Promise<Court> {
         const court = await this.findOne(id);
         this.courtsRepository.merge(court, updateCourtDto);
-        return await this.courtsRepository.save(court);
+        const savedCourt = await this.courtsRepository.save(court);
+        
+        // Return court with normalized imageUrl for frontend compatibility
+        const result = savedCourt as Court & { imageUrl?: string };
+        result.imageUrl = savedCourt.imagePath ? this.normalizeImagePath(savedCourt.imagePath) : undefined;
+        return result;
     }
 
     async remove(id: number): Promise<void> {

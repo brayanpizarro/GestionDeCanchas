@@ -69,7 +69,10 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
-      this.logger.log('Creating product with data:', createProductDto);
+      this.logger.log('Creating product with data:', {
+        ...createProductDto,
+        hasImagePath: !!createProductDto.imagePath
+      });
       
       // Validate required fields
       if (!createProductDto.name) {
@@ -87,9 +90,26 @@ export class ProductsService {
         previousStock: createProductDto.stock
       });
 
+      this.logger.log('Product entity before save:', {
+        id: product.id,
+        name: product.name,
+        imagePath: product.imagePath,
+        hasImagePath: !!product.imagePath
+      });
+
       const savedProduct = await this.productsRepository.save(product);
-      this.logger.log('Product created successfully:', savedProduct.id);
-      return savedProduct;
+      this.logger.log('Product saved successfully:', {
+        id: savedProduct.id,
+        name: savedProduct.name,
+        imagePath: savedProduct.imagePath,
+        hasImagePath: !!savedProduct.imagePath
+      });
+      
+      // Return product with normalized imageUrl for frontend compatibility
+      return {
+        ...savedProduct,
+        imageUrl: savedProduct.imagePath ? this.normalizeImagePath(savedProduct.imagePath) : undefined
+      };
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -109,7 +129,13 @@ export class ProductsService {
       }
 
       this.productsRepository.merge(product, updateProductDto);
-      return await this.productsRepository.save(product);
+      const updatedProduct = await this.productsRepository.save(product);
+      
+      // Return product with normalized imageUrl for frontend compatibility
+      return {
+        ...updatedProduct,
+        imageUrl: updatedProduct.imagePath ? this.normalizeImagePath(updatedProduct.imagePath) : undefined
+      };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;

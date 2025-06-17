@@ -14,6 +14,15 @@ interface CourtSelectorProps {
 const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, onCourtSelect }) => {
   const availableCourts = courts.filter((court) => court.available)
 
+  // Debug log para ver las canchas y sus imágenes
+  console.log('🏟️ Courts received in CourtSelector:', courts.map(court => ({
+    id: court.id,
+    name: court.name,
+    imageUrl: court.imageUrl,
+    imagePath: court.imagePath,
+    hasImage: !!(court.imageUrl || court.imagePath)
+  })));
+
   if (availableCourts.length === 0) {
     return (
       <div className="text-center py-12">
@@ -27,14 +36,25 @@ const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, on
         let imageUrl: string | undefined = undefined
         
         if (court.imageUrl) {
-          imageUrl = court.imageUrl
+          // Si imageUrl está presente (viene del backend normalizada)
+          if (court.imageUrl.startsWith('http')) {
+            imageUrl = court.imageUrl
+          } else {
+            // Agregar la URL base si no la tiene
+            imageUrl = `http://localhost:3001${court.imageUrl}`
+          }
         } else if (court.imagePath) {
+          // Fallback a imagePath si imageUrl no está disponible
           if (court.imagePath.startsWith('http')) {
             imageUrl = court.imagePath
           } else {
-            imageUrl = `http://localhost:3001/${court.imagePath}`
+            // Normalizar imagePath
+            const cleanPath = court.imagePath.replace(/^\/+uploads\/+/g, '').replace(/^uploads\/+/g, '')
+            imageUrl = `http://localhost:3001/uploads/${cleanPath}`
           }
         }
+        
+        console.log('🖼️ Image URL for court', court.name, ':', imageUrl);
         
         return (
         <div

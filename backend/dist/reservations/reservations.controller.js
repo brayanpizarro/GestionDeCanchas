@@ -38,9 +38,9 @@ let ReservationsController = class ReservationsController {
         return this.reservationsService.findAll();
     }
     async findAllReservations() {
-        console.log('🔍 Admin solicitando TODAS las reservas...');
+        console.log('Admin solicitando TODAS las reservas...');
         const allReservations = await this.reservationsService.findAll();
-        console.log(`📊 Total de reservas encontradas: ${allReservations.length}`);
+        console.log(`Total de reservas encontradas: ${allReservations.length}`);
         return allReservations;
     }
     async getStats() {
@@ -108,19 +108,15 @@ let ReservationsController = class ReservationsController {
     }
     async getCourtStats() {
         try {
-            console.log('🎯 Court stats endpoint called');
+            console.log('Court stats endpoint called');
             const stats = await this.reservationsService.getDetailedReservationStats();
-            console.log('📊 Returning stats:', stats);
+            console.log(' Returning stats:', stats);
             return stats;
         }
         catch (error) {
-            console.error('❌ Error in court-stats endpoint:', error);
+            console.error('Error in court-stats endpoint:', error);
             throw new common_1.BadRequestException(`Failed to get court statistics: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
-    }
-    async testEndpoint() {
-        console.log('🧪 Test endpoint called');
-        return { status: 'ok', message: 'Reservations controller is working', timestamp: new Date().toISOString() };
     }
 };
 exports.ReservationsController = ReservationsController;
@@ -203,12 +199,6 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ReservationsController.prototype, "getCourtStats", null);
-__decorate([
-    (0, common_1.Get)('test'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ReservationsController.prototype, "testEndpoint", null);
 exports.ReservationsController = ReservationsController = __decorate([
     (0, common_1.Controller)('reservations'),
     __metadata("design:paramtypes", [reservations_service_1.ReservationsService])
