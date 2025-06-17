@@ -142,6 +142,20 @@ export class ReservationsController {
         return this.reservationsService.updateStatus(id, status);
     }
 
+    @Put(':id/cancel')
+    async cancelReservation(@Param('id') id: string) {
+        try {
+            const result = await this.reservationsService.cancelReservation(+id);
+            return {
+                message: 'Reservation cancelled successfully',
+                reservation: result
+            };
+        } catch (error) {
+            console.error('Error cancelling reservation:', error);
+            throw error;
+        }
+    }
+
     @Get('court-stats')
     async getCourtStats(): Promise<any> {
         try {

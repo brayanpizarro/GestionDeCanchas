@@ -383,6 +383,21 @@ function AdminDashboard() {
     }
   }
 
+  const handleDeleteCourt = async (court: Court) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar la cancha "${court.name}"?`)) {
+      return;
+    }
+
+    try {
+      await CourtService.deleteCourt(court.id);
+      setCourts((prevCourts) => prevCourts.filter((c) => c.id !== court.id));
+      alert("Cancha eliminada exitosamente");
+    } catch (error) {
+      console.error("Error al eliminar la cancha:", error);
+      alert(error instanceof Error ? error.message : "Error al eliminar la cancha");
+    }
+  };
+
   const stats = [
     {
       title: "Total Canchas",
@@ -909,7 +924,12 @@ function AdminDashboard() {
                             >
                               Editar
                             </button>
-                            <button className="text-red-600 hover:text-red-900">Eliminar</button>
+                            <button 
+                              onClick={() => handleDeleteCourt(court)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Eliminar
+                            </button>
                           </div>
                         </td>                      </tr>
                     ))

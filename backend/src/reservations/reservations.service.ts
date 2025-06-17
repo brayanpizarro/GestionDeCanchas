@@ -408,6 +408,47 @@ export class ReservationsService {
         return updatedReservation;
     }
 
+    async cancelReservation(id: number): Promise<Reservation> {
+        const reservation = await this.reservationsRepository.findOne({
+            where: { id },
+            relations: ['court', 'user']
+        });
+
+        if (!reservation) {
+            throw new NotFoundException(`Reservation with ID ${id} not found`);
+        }
+
+        // Verificar si la reserva ya está cancelada
+        if (reservation.status === 'cancelled') {
+            throw new BadRequestException('Reservation is already cancelled');
+        }
+
+        // Actualizar el estado de la reserva
+        reservation.status = 'cancelled';
+        const updatedReservation = await this.reservationsRepository.save(reservation);
+
+        // Notificar por email al usuario si está configurado
+        try {            if (reservation.user && reservation.user.email) {
+                await this.emailService.sendReservationCancellation(
+                    reservation.user.email,
+                    reservation.user.name,
+                    {
+                        id: reservation.id,
+                        courtName: reservation.court.name,
+                        date: reservation.startTime.toISOString().split('T')[0],
+                        startTime: reservation.startTime.toISOString(),
+                        endTime: reservation.endTime.toISOString()
+                    }
+                );
+            }
+        } catch (error) {
+            console.error('Error sending cancellation email:', error);
+            // No lanzamos el error para que no afecte la cancelación
+        }
+
+        return updatedReservation;
+    }
+
     /**
      * Obtiene los horarios disponibles para una cancha específica en una fecha dada
      */

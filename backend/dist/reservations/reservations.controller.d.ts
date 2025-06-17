@@ -33,5 +33,9 @@ export declare class ReservationsController {
     }>;
     findOne(id: number): Promise<import("./entities/reservation.entity").Reservation>;
     updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<import("./entities/reservation.entity").Reservation>;
+    cancelReservation(id: string): Promise<{
+        message: string;
+        reservation: import("./entities/reservation.entity").Reservation;
+    }>;
     getCourtStats(): Promise<any>;
 }

@@ -27,6 +27,7 @@ export declare class ReservationsService {
     findByUser(userId: number): Promise<Reservation[]>;
     findOne(id: number): Promise<Reservation>;
     updateStatus(id: number, status: 'pending' | 'confirmed' | 'completed' | 'cancelled'): Promise<Reservation>;
+    cancelReservation(id: number): Promise<Reservation>;
     getAvailableTimeSlots(courtId: number, date: string): Promise<any[]>;
     isCourtAvailable(courtId: number, startTime: Date, endTime: Date): Promise<boolean>;
     getDetailedReservationStats(): Promise<any[]>;
