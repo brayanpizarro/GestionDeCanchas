@@ -64,11 +64,16 @@ El contenedor publica PostgreSQL en el puerto `5433` del equipo local y utiliza,
 Crear `backend/.env` con las variables de conexión:
 
 ```env
+# En producción se puede usar DATABASE_URL en lugar de las variables individuales.
+DATABASE_URL=
 DB_HOST=localhost
 DB_PORT=5433
 DB_USER=postgres
 DB_PASSWORD=postgres
 DB_NAME=dbingeso
+DB_SSL=false
+DB_SSL_REJECT_UNAUTHORIZED=true
+DB_SYNCHRONIZE=true
 PORT=3001
 
 # Opcionales: necesarios para enviar correos de recuperación
@@ -139,9 +144,14 @@ DB_PORT=5432
 DB_USER=<usuario-postgresql>
 DB_PASSWORD=<password-postgresql>
 DB_NAME=<base-de-datos>
+DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=true
+DB_SYNCHRONIZE=false
 PORT=3001
 FRONTEND_URL=https://<dominio-del-frontend>
 ```
+
+También se puede configurar la conexión con una única variable `DATABASE_URL`. Si se define, TypeORM la utilizará como URL de conexión; las variables individuales quedan como alternativa para el entorno local.
 
 Variables opcionales para recuperación de contraseña:
 

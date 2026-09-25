@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
@@ -15,15 +15,22 @@ import { ForgotPasswordModule } from './auth/forgot-password.module';
     ConfigModule.forRoot({ 
       isGlobal: true 
     }), 
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT ?? '5433'),
-      username: process.env.DB_USER ,
-      password: process.env.DB_PASSWORD ,
-      database: process.env.DB_NAME,
-      autoLoadEntities: true,
-      synchronize: true,
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres' as const,
+        url: configService.get<string>('DATABASE_URL'),
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT', 5433),
+        username: configService.get<string>('DB_USER'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_NAME'),
+        ssl: configService.get<string>('DB_SSL') === 'true'
+          ? { rejectUnauthorized: configService.get<string>('DB_SSL_REJECT_UNAUTHORIZED') !== 'false' }
+          : false,
+        autoLoadEntities: true,
+        synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
+      }),
     }),
     UsersModule,
     AuthModule,

@@ -1,34 +1,24 @@
-# Dockerfile para desarrollo
-FROM node:18-alpine
+FROM node:20-alpine AS builder
 
-# Instalar herramientas necesarias
-RUN apk add --no-cache postgresql-client netcat-openbsd
-
-# Crear directorio de trabajo
 WORKDIR /app
 
-ENV NODE_ENV=production
-
-# Copiar archivos de dependencias
 COPY package*.json ./
+RUN npm ci
 
-# Instalar TODAS las dependencias (incluyendo devDependencies)
-RUN npm install
-
-# Copiar código fuente
 COPY . .
-
-# Crear directorio para uploads
-RUN mkdir -p uploads
-
-#  Exponer puerto
-EXPOSE 3001
-
-#  Compilar la aplicación
 RUN npm run build
 
+FROM node:20-alpine
 
-CMD ["node", "dist/main"]
+WORKDIR /app
+ENV NODE_ENV=production
 
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# CMD ["npm", "run", "start:prod"]
+COPY --from=builder /app/dist ./dist
+RUN mkdir -p /app/uploads
+
+EXPOSE 3001
+
+CMD ["node", "dist/main.js"]
