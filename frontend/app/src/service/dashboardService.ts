@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:3001/api/v1';
+import { API_BASE_URL } from './api';
+
+const API_URL = API_BASE_URL;
 
 export interface WeeklyStats {
     name: string;

@@ -7,6 +7,8 @@ RUN apk add --no-cache postgresql-client netcat-openbsd
 # Crear directorio de trabajo
 WORKDIR /app
 
+ENV NODE_ENV=production
+
 # Copiar archivos de dependencias
 COPY package*.json ./
 

@@ -43,8 +43,16 @@ async function bootstrap() {
     app.use(express.json({ limit: '50mb' }));
     app.use(express.urlencoded({ limit: '50mb', extended: true }));
     app.use('/uploads', express.static((0, path_1.join)(__dirname, '..', 'uploads')));
+    app.getHttpAdapter().get('/health', (_request, response) => {
+        response.status(200).json({ status: 'ok' });
+    });
+    const allowedOrigins = [
+        'http://localhost:3001',
+        'http://localhost:5173',
+        ...(process.env.FRONTEND_URL?.split(',').map((origin) => origin.trim()) ?? []),
+    ].filter(Boolean);
     app.enableCors({
-        origin: ['http://localhost:3001', 'http://localhost:5173'],
+        origin: allowedOrigins,
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],

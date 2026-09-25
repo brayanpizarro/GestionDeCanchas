@@ -28,6 +28,10 @@ function App() {
                             } 
                         />
                     </Routes>
+
+                    <footer className="text-center py-4 text-sm text-gray-500">
+                        <p>Brayan Pizarro - 2026 - Cloud Computing</p>
+                    </footer>
                     
                     {/* Toaster para las notificaciones */}
                     <Toaster 

@@ -1,3 +1,5 @@
+import { API_BASE_URL } from './api';
+
 interface AuthResponse {
   token: string;
   user: {
@@ -8,7 +10,7 @@ interface AuthResponse {
   };
 }
 
-const API_URL = 'http://localhost:3001/api/v1/auth';
+const API_URL = `${API_BASE_URL}/auth`;
 
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
   const res = await fetch(`${API_URL}/login`, {
@@ -92,7 +94,7 @@ export const updatePassword = async (currentPassword: string, newPassword: strin
 
   const userData = JSON.parse(user);
   
-  const res = await fetch(`http://localhost:3001/api/v1/users/password`, {
+  const res = await fetch(`${API_BASE_URL}/users/password`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',

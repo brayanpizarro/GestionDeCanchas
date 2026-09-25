@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Mail, Lock, Shield, CheckCircle, AlertCircle } from 'lucide-react';
+import { API_BASE_URL } from '../service/api';
 
 // Configuración de API
-const API_URL = "http://localhost:3001/api/v1/auth";
+const API_URL = `${API_BASE_URL}/auth`;
 
 // Interfaces
 export interface ForgotPasswordRequest {

@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:3001/api/v1/auth';
+import { API_BASE_URL } from './api';
+
+const API_URL = `${API_BASE_URL}/auth`;
 
 export const getUserCards = async (token: string) => {
     const res = await fetch(`${API_URL}/user/cards`, {

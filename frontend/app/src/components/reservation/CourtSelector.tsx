@@ -4,6 +4,7 @@ import type React from "react"
 import { Building2, Users, DollarSign, Umbrella, Sun } from "lucide-react"
 import type { Court } from "../../types/reservation"
 import { formatChileanCurrency } from "../../utils/currency"
+import { getAssetUrl } from "../../service/api"
 
 interface CourtSelectorProps {
   courts: Court[]
@@ -41,7 +42,7 @@ const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, on
             imageUrl = court.imageUrl
           } else {
             // Agregar la URL base si no la tiene
-            imageUrl = `http://localhost:3001${court.imageUrl}`
+            imageUrl = getAssetUrl(court.imageUrl)
           }
         } else if (court.imagePath) {
           // Fallback a imagePath si imageUrl no está disponible
@@ -50,7 +51,7 @@ const CourtSelector: React.FC<CourtSelectorProps> = ({ courts, selectedCourt, on
           } else {
             // Normalizar imagePath
             const cleanPath = court.imagePath.replace(/^\/+uploads\/+/g, '').replace(/^uploads\/+/g, '')
-            imageUrl = `http://localhost:3001/uploads/${cleanPath}`
+            imageUrl = getAssetUrl(`uploads/${cleanPath}`)
           }
         }
         

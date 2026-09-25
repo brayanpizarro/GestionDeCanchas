@@ -3,6 +3,7 @@ import type React from "react"
 import { Package, Check, Plus, Minus } from "lucide-react"
 import type { Equipment, SelectedEquipment } from "../../types/reservation"
 import { formatChileanCurrency } from "../../utils/currency"
+import { getAssetUrl } from "../../service/api"
 
 interface EquipmentSelectorProps {
     equipment: Equipment[]
@@ -63,9 +64,7 @@ const EquipmentSelector: React.FC<EquipmentSelectorProps> = ({
                             >                                <div className="relative">
                                     {eq.imageUrl ? (
                                         (() => {
-                                            const finalUrl = eq.imageUrl.startsWith('http') 
-                                                ? eq.imageUrl 
-                                                : `http://localhost:3001${eq.imageUrl}`;
+                                            const finalUrl = getAssetUrl(eq.imageUrl);
                                             console.log(`Equipment ${eq.name}: imageUrl="${eq.imageUrl}", finalUrl="${finalUrl}"`);
                                             return (
                                                 <img

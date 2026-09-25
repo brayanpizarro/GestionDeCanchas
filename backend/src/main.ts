@@ -13,10 +13,21 @@ async function bootstrap() {
   
   // Servir archivos estáticos desde el directorio de uploads
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
+
+  // Endpoint liviano para health checks de Coolify y del proxy.
+  app.getHttpAdapter().get('/health', (_request, response) => {
+    response.status(200).json({ status: 'ok' });
+  });
   
   // Configurar CORS
+  const allowedOrigins = [
+    'http://localhost:3001',
+    'http://localhost:5173',
+    ...(process.env.FRONTEND_URL?.split(',').map((origin) => origin.trim()) ?? []),
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://localhost:5173'], 
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
