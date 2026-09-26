@@ -29,20 +29,28 @@ exports.AppModule = AppModule = __decorate([
             }),
             typeorm_1.TypeOrmModule.forRootAsync({
                 inject: [config_1.ConfigService],
-                useFactory: (configService) => ({
-                    type: 'postgres',
-                    url: configService.get('DATABASE_URL'),
-                    host: configService.get('DB_HOST'),
-                    port: configService.get('DB_PORT', 5433),
-                    username: configService.get('DB_USER'),
-                    password: configService.get('DB_PASSWORD'),
-                    database: configService.get('DB_NAME'),
-                    ssl: configService.get('DB_SSL') === 'true'
+                useFactory: (configService) => {
+                    const databaseUrl = configService.get('DATABASE_URL');
+                    const ssl = configService.get('DB_SSL') === 'true'
                         ? { rejectUnauthorized: configService.get('DB_SSL_REJECT_UNAUTHORIZED') !== 'false' }
-                        : false,
-                    autoLoadEntities: true,
-                    synchronize: configService.get('DB_SYNCHRONIZE') === 'true',
-                }),
+                        : false;
+                    const connection = databaseUrl
+                        ? { url: databaseUrl }
+                        : {
+                            host: configService.getOrThrow('DB_HOST'),
+                            port: Number(configService.getOrThrow('DB_PORT')),
+                            username: configService.getOrThrow('DB_USER'),
+                            password: configService.getOrThrow('DB_PASSWORD'),
+                            database: configService.getOrThrow('DB_NAME'),
+                        };
+                    return {
+                        type: 'postgres',
+                        ...connection,
+                        ssl,
+                        autoLoadEntities: true,
+                        synchronize: configService.get('DB_SYNCHRONIZE') === 'true',
+                    };
+                },
             }),
             users_module_1.UsersModule,
             auth_module_1.AuthModule,

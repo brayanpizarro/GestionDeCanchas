@@ -75,10 +75,13 @@ DB_SSL=false
 DB_SSL_REJECT_UNAUTHORIZED=true
 DB_SYNCHRONIZE=true
 PORT=3001
+JWT_SECRET=replace-with-a-long-random-secret
 
 # Opcionales: necesarios para enviar correos de recuperación
+EMAIL_SERVICE=gmail
 EMAIL_USER=tu-correo@example.com
 EMAIL_PASSWORD=tu-clave-o-token-smtp
+EMAIL_FROM=tu-correo@example.com
 ```
 
 Instalar dependencias y arrancar la API:
@@ -149,9 +152,12 @@ DB_SSL_REJECT_UNAUTHORIZED=true
 DB_SYNCHRONIZE=false
 PORT=3001
 FRONTEND_URL=https://<dominio-del-frontend>
+JWT_SECRET=<secreto-largo-y-aleatorio>
 ```
 
 También se puede configurar la conexión con una única variable `DATABASE_URL`. Si se define, TypeORM la utilizará como URL de conexión; las variables individuales quedan como alternativa para el entorno local.
+
+`JWT_SECRET` es obligatorio y nunca debe publicarse en el repositorio. Para crear el administrador mediante `npm run create-admin`, define además `ADMIN_EMAIL` y `ADMIN_PASSWORD` como variables temporales o secretas en Coolify.
 
 Variables opcionales para recuperación de contraseña:
 

@@ -1,3 +1,5 @@
 export const jwtConstanst = {
-    secret : "Esta palabra no se ocupar en produccion",
+    secret: process.env.JWT_SECRET || (() => {
+        throw new Error('JWT_SECRET debe estar configurado antes de iniciar el backend');
+    })(),
 };

@@ -1,11 +1,14 @@
 "use strict";
-const API_URL = 'http://localhost:3001/api/v1';
+const API_URL = process.env.ADMIN_API_URL || 'http://localhost:3001/api/v1';
 const ADMIN_USER = {
-    name: 'Administrador UCN',
-    email: 'administradorucn@gmail.com',
-    password: 'Admin2025:)',
+    name: process.env.ADMIN_NAME || 'Administrador UCN',
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD,
     role: 'admin'
 };
+if (!ADMIN_USER.email || !ADMIN_USER.password) {
+    throw new Error('ADMIN_EMAIL y ADMIN_PASSWORD deben estar configurados');
+}
 async function createAdminUser() {
     try {
         console.log('Creando usuario administrador...');

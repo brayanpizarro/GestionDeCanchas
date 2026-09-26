@@ -76,9 +76,6 @@ export interface Reservation {
     user?: User;
 }
 
-// Admin email constant
-export const ADMIN_CREDENTIALS = {email : 'administradorucn@gmail.com', password: 'Admin2025:)'};
-
 class DashboardService {    private getAuthHeaders() {
         return {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

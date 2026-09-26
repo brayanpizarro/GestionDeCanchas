@@ -1,8 +1,8 @@
-declare const API_URL = "http://localhost:3001/api/v1";
+declare const API_URL: string;
 declare const ADMIN_USER: {
     name: string;
-    email: string;
-    password: string;
+    email: string | undefined;
+    password: string | undefined;
     role: string;
 };
 declare function createAdminUser(): Promise<void>;

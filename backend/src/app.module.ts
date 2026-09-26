@@ -17,20 +17,30 @@ import { ForgotPasswordModule } from './auth/forgot-password.module';
     }), 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres' as const,
-        url: configService.get<string>('DATABASE_URL'),
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT', 5433),
-        username: configService.get<string>('DB_USER'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        ssl: configService.get<string>('DB_SSL') === 'true'
+      useFactory: (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        const ssl = configService.get<string>('DB_SSL') === 'true'
           ? { rejectUnauthorized: configService.get<string>('DB_SSL_REJECT_UNAUTHORIZED') !== 'false' }
-          : false,
-        autoLoadEntities: true,
-        synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
-      }),
+          : false;
+
+        const connection = databaseUrl
+          ? { url: databaseUrl }
+          : {
+              host: configService.getOrThrow<string>('DB_HOST'),
+              port: Number(configService.getOrThrow<string>('DB_PORT')),
+              username: configService.getOrThrow<string>('DB_USER'),
+              password: configService.getOrThrow<string>('DB_PASSWORD'),
+              database: configService.getOrThrow<string>('DB_NAME'),
+            };
+
+        return {
+          type: 'postgres' as const,
+          ...connection,
+          ssl,
+          autoLoadEntities: true,
+          synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true',
+        };
+      },
     }),
     UsersModule,
     AuthModule,

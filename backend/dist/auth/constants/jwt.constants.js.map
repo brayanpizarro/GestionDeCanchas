@@ -1,1 +1,1 @@
-{"version":3,"file":"jwt.constants.js","sourceRoot":"","sources":["../../../src/auth/constants/jwt.constants.ts"],"names":[],"mappings":";;;AAAa,QAAA,YAAY,GAAG;IACxB,MAAM,EAAG,yCAAyC;CACrD,CAAC"}
+{"version":3,"file":"jwt.constants.js","sourceRoot":"","sources":["../../../src/auth/constants/jwt.constants.ts"],"names":[],"mappings":";;;AAAa,QAAA,YAAY,GAAG;IACxB,MAAM,EAAE,OAAO,CAAC,GAAG,CAAC,UAAU,IAAI,CAAC,GAAG,EAAE;QACpC,MAAM,IAAI,KAAK,CAAC,+DAA+D,CAAC,CAAC;IACrF,CAAC,CAAC,EAAE;CACP,CAAC"}

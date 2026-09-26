@@ -53,7 +53,7 @@ let EmailService = EmailService_1 = class EmailService {
     constructor() {
         if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
             this.transporter = nodemailer.createTransport({
-                service: 'gmail',
+                service: process.env.EMAIL_SERVICE || 'gmail',
                 auth: {
                     user: process.env.EMAIL_USER,
                     pass: process.env.EMAIL_PASSWORD,
@@ -76,7 +76,7 @@ let EmailService = EmailService_1 = class EmailService {
         }
         try {
             const info = await this.transporter.sendMail({
-                from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
+                from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
                 to,
                 subject,
                 text,
@@ -94,7 +94,7 @@ let EmailService = EmailService_1 = class EmailService {
         }
         try {
             const mailOptions = {
-                from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
+                from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
                 to: email,
                 subject: 'Código de restablecimiento de contraseña - Gestión Canchas UCN',
                 html: `
@@ -124,7 +124,7 @@ let EmailService = EmailService_1 = class EmailService {
         }
         try {
             const mailOptions = {
-                from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
+                from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
                 to: email,
                 subject: 'Contraseña actualizada - Gestión Canchas UCN',
                 html: `
@@ -150,7 +150,7 @@ let EmailService = EmailService_1 = class EmailService {
         }
         try {
             const mailOptions = {
-                from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
+                from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
                 to: email,
                 subject: '¡Bienvenido a Gestión Canchas UCN! - Cuenta creada exitosamente',
                 html: `
@@ -186,7 +186,7 @@ let EmailService = EmailService_1 = class EmailService {
         }
         try {
             const mailOptions = {
-                from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
+                from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
                 to: email,
                 subject: 'Contraseña modificada - Gestión Canchas UCN',
                 html: `
@@ -228,7 +228,7 @@ let EmailService = EmailService_1 = class EmailService {
             const formattedTimeRange = (0, date_utils_1.formatReservationTimeRangeBackend)(reservationData.startTime, reservationData.endTime);
             const formattedStartTime = (0, date_utils_1.formatReservationTimeBackend)(reservationData.startTime);
             const mailOptions = {
-                from: '"Gestión Canchas UCN" <no-reply@gestioncanchas.com>',
+                from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
                 to: email,
                 subject: 'Confirmación de Reserva - Gestión Canchas UCN',
                 html: `
