@@ -1,14 +1,10 @@
 export declare class EmailService {
-    private transporter;
-    private readonly logger;
-    constructor();
-    private isEmailConfigured;
-    sendEmail(to: string, subject: string, text: string): Promise<void>;
-    sendPasswordResetCode(email: string, code: string, userName: string): Promise<void>;
-    sendPasswordResetConfirmation(email: string, userName: string): Promise<void>;
-    sendWelcomeEmail(email: string, userName: string): Promise<void>;
-    sendPasswordChangeNotification(email: string, userName: string): Promise<void>;
-    sendReservationConfirmation(email: string, name: string, reservationData: {
+    sendEmail(_to: string, _subject: string, _text: string): Promise<void>;
+    sendPasswordResetCode(_email: string, _code: string, _userName: string): Promise<void>;
+    sendPasswordResetConfirmation(_email: string, _userName: string): Promise<void>;
+    sendWelcomeEmail(_email: string, _userName: string): Promise<void>;
+    sendPasswordChangeNotification(_email: string, _userName: string): Promise<void>;
+    sendReservationConfirmation(_email: string, _name: string, _reservationData: {
         id: number;
         courtName: string;
         date: string;
@@ -17,7 +13,7 @@ export declare class EmailService {
         duration: number;
         players: string[];
     }): Promise<void>;
-    sendReservationCancellation(email: string, name: string, reservationData: {
+    sendReservationCancellation(_email: string, _name: string, _reservationData: {
         id: number;
         courtName: string;
         date: string;

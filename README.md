@@ -5,7 +5,7 @@ Sistema web para la administración de canchas deportivas de la Universidad Cat�
 ## Funcionalidades
 
 - Registro, inicio y cierre de sesión mediante autenticación JWT.
-- Recuperación de contraseña mediante código enviado por correo.
+- Flujo de recuperación de contraseña disponible en la API; el envío de emails está desactivado.
 - Consulta de canchas, horarios disponibles y estado de cada cancha.
 - Creación de reservas con selección de cancha, horario, jugadores y equipamiento.
 - Pago y cancelación de reservas.
@@ -37,7 +37,6 @@ GestionDeCanchas/
 - Node.js 18 o superior.
 - npm, pnpm o Yarn.
 - Docker Desktop, si se desea ejecutar PostgreSQL mediante Docker.
-- Una cuenta SMTP si se quiere habilitar el envío real de correos de recuperación.
 
 ## Configuración local
 
@@ -77,11 +76,6 @@ DB_SYNCHRONIZE=true
 PORT=3001
 JWT_SECRET=replace-with-a-long-random-secret
 
-# Opcionales: necesarios para enviar correos de recuperación
-EMAIL_SERVICE=gmail
-EMAIL_USER=tu-correo@example.com
-EMAIL_PASSWORD=tu-clave-o-token-smtp
-EMAIL_FROM=tu-correo@example.com
 ```
 
 Instalar dependencias y arrancar la API:
